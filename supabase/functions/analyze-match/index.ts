@@ -34,6 +34,22 @@ const LEAGUE_THESPORTSDB_MAP: Record<number, string> = {
   4346: '4346', 4330: '4330', 4347: '4347', 4351: '4351', 4336: '4336', 4396: '4396',
 };
 
+// football-data.co.uk CSV file codes (free, unlimited, detailed stats)
+const LEAGUE_FDUK_MAP: Record<number, { div: string; path: string }> = {
+  4334: { div: 'F1', path: 'F1' },   // Ligue 1
+  4396: { div: 'F2', path: 'F2' },   // Ligue 2
+  4328: { div: 'E0', path: 'E0' },   // Premier League
+  4336: { div: 'E1', path: 'E1' },   // Championship
+  4335: { div: 'SP1', path: 'SP1' }, // La Liga
+  4332: { div: 'I1', path: 'I1' },   // Serie A
+  4331: { div: 'D1', path: 'D1' },   // Bundesliga
+  4337: { div: 'N1', path: 'N1' },   // Eredivisie
+  4344: { div: 'P1', path: 'P1' },   // Primeira Liga
+  4338: { div: 'B1', path: 'B1' },   // Belgian Pro League
+  4346: { div: 'T1', path: 'T1' },   // Super Lig
+  4330: { div: 'SC0', path: 'SC0' }, // Scottish Premiership
+};
+
 // ====== FREE DATA SOURCES ======
 
 // 1. ESPN Standings
