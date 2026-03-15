@@ -19,11 +19,15 @@ const Index = () => {
   const [analyzedOnly, setAnalyzedOnly] = useState(false);
   const [selectedLeagues, setSelectedLeagues] = useState<number[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    const stored = localStorage.getItem('anap-theme');
+    return stored ? stored === 'dark' : true;
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.classList.toggle('light', !isDark);
+    localStorage.setItem('anap-theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
   const dateStr = format(date, 'yyyy-MM-dd');

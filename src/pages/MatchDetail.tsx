@@ -27,6 +27,14 @@ export default function MatchDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Restore theme from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('anap-theme');
+    const isDark = stored ? stored === 'dark' : true;
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+  }, []);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<DbAnalysis | null>(null);
   const [steps, setSteps] = useState<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }[]>(
@@ -157,8 +165,8 @@ export default function MatchDetail() {
             {match.league_round && <><span className="text-border">·</span><span>{match.league_round}</span></>}
           </div>
 
-          <div className="flex items-center justify-center gap-8">
-            <div className="text-center">
+          <div className="flex items-center justify-center gap-4 sm:gap-8">
+            <div className="text-center flex-1 min-w-0 max-w-[120px]">
               <div className="h-18 w-18 rounded-2xl bg-surface flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ height: 72, width: 72 }}>
                 {match.home_team_logo ? (
                   <img src={match.home_team_logo} alt={match.home_team_name} className="h-12 w-12 object-contain" />
@@ -166,7 +174,7 @@ export default function MatchDetail() {
                   <span className="font-display font-black text-lg">{match.home_team_name.slice(0, 3).toUpperCase()}</span>
                 )}
               </div>
-              <p className="font-display font-bold text-sm">{match.home_team_name}</p>
+              <p className="font-display font-bold text-sm truncate">{match.home_team_name}</p>
             </div>
 
             <div className="text-center">
@@ -185,7 +193,7 @@ export default function MatchDetail() {
               )}
             </div>
 
-            <div className="text-center">
+            <div className="text-center flex-1 min-w-0 max-w-[120px]">
               <div className="h-18 w-18 rounded-2xl bg-surface flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ height: 72, width: 72 }}>
                 {match.away_team_logo ? (
                   <img src={match.away_team_logo} alt={match.away_team_name} className="h-12 w-12 object-contain" />
@@ -193,7 +201,7 @@ export default function MatchDetail() {
                   <span className="font-display font-black text-lg">{match.away_team_name.slice(0, 3).toUpperCase()}</span>
                 )}
               </div>
-              <p className="font-display font-bold text-sm">{match.away_team_name}</p>
+              <p className="font-display font-bold text-sm truncate">{match.away_team_name}</p>
             </div>
           </div>
 
