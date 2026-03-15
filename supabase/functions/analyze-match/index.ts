@@ -69,19 +69,14 @@ serve(async (req) => {
 
     try {
       // Fetch fixture statistics if match has started/finished
-      const [statsRes, h2hRes, standingsRes, oddsRes] = await Promise.allSettled([
-        fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${match.api_fixture_id}`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
-        fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
-        fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=2024`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
-        fetch(`https://v3.football.api-sports.io/odds?fixture=${match.api_fixture_id}`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
+      const apiHeaders = { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" };
+      const [statsRes, h2hRes, standingsRes, oddsRes, injuriesHomeRes, injuriesAwayRes] = await Promise.allSettled([
+        fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=2024`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/odds?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/injuries?team=${match.home_team_id}&season=2024`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/injuries?team=${match.away_team_id}&season=2024`, { headers: apiHeaders }),
       ]);
 
       if (statsRes.status === "fulfilled" && statsRes.value.ok) {
@@ -95,6 +90,12 @@ serve(async (req) => {
       }
       if (oddsRes.status === "fulfilled" && oddsRes.value.ok) {
         oddsData = await oddsRes.value.json();
+      }
+      if (injuriesHomeRes.status === "fulfilled" && injuriesHomeRes.value.ok) {
+        injuriesHomeData = await injuriesHomeRes.value.json();
+      }
+      if (injuriesAwayRes.status === "fulfilled" && injuriesAwayRes.value.ok) {
+        injuriesAwayData = await injuriesAwayRes.value.json();
       }
     } catch (apiErr) {
       console.error("Error fetching additional data:", apiErr);
