@@ -177,6 +177,31 @@ serve(async (req) => {
 
     const injuriesSummary = `${formatInjuries(injuriesHomeData, match.home_team_name)}\n\n${formatInjuries(injuriesAwayData, match.away_team_name)}`;
 
+    const formatRecentForm = (data: any, teamId: number, teamName: string) => {
+      try {
+        if (!data?.response?.length) return `${teamName}: Aucun résultat récent disponible`;
+        const results = data.response.slice(0, 10).map((f: any) => {
+          const isHome = f.teams.home.id === teamId;
+          const goalsFor = isHome ? f.goals.home : f.goals.away;
+          const goalsAgainst = isHome ? f.goals.away : f.goals.home;
+          const opponent = isHome ? f.teams.away.name : f.teams.home.name;
+          const venue = isHome ? 'Dom' : 'Ext';
+          let result = 'N';
+          if (goalsFor > goalsAgainst) result = 'V';
+          else if (goalsFor < goalsAgainst) result = 'D';
+          return `  ${result} ${goalsFor}-${goalsAgainst} vs ${opponent} (${venue}, ${f.fixture.date?.split("T")[0]})`;
+        });
+        const wins = results.filter((r: string) => r.trimStart().startsWith('V')).length;
+        const draws = results.filter((r: string) => r.trimStart().startsWith('N')).length;
+        const losses = results.filter((r: string) => r.trimStart().startsWith('D')).length;
+        return `${teamName} - Série: ${wins}V ${draws}N ${losses}D sur les ${results.length} derniers matchs:\n${results.join("\n")}`;
+      } catch {
+        return `${teamName}: Résultats récents indisponibles`;
+      }
+    };
+
+    const recentFormSummary = `${formatRecentForm(lastHomeData, match.home_team_id, match.home_team_name)}\n\n${formatRecentForm(lastAwayData, match.away_team_id, match.away_team_name)}`;
+
     const systemPrompt = `Tu es un expert en analyse de football et en statistiques sportives avancées. Tu analyses des matchs de football en utilisant toutes les données disponibles pour fournir des prédictions probabilistes précises et honnêtes.
 
 RÈGLES STRICTES:
@@ -185,6 +210,7 @@ RÈGLES STRICTES:
 - Si des données manquent, indique-le clairement et ajuste ton niveau de confiance
 - Sois honnête sur les limites de ton analyse
 - Les blessures et suspensions doivent fortement influencer ton analyse
+- La forme récente (séries de victoires/défaites) doit être un facteur majeur
 - Fournis une analyse structurée et détaillée en français`;
 
     const userPrompt = `Analyse ce match de football et fournis une prédiction détaillée.
@@ -199,6 +225,9 @@ MATCH:
 CLASSEMENT ACTUEL:
 ${standingsSummary}
 
+FORME RÉCENTE (10 derniers matchs par équipe):
+${recentFormSummary}
+
 CONFRONTATIONS DIRECTES (10 dernières):
 ${h2hSummary}
 
@@ -210,7 +239,7 @@ ${oddsSummary}
 
 SOURCES DE DONNÉES DISPONIBLES: ${sourceCount}
 
-Basé sur TOUTES les données ci-dessus (y compris les absences de joueurs), fournis ton analyse.`;
+Basé sur TOUTES les données ci-dessus (forme récente, absences de joueurs, classement, H2H, cotes), fournis ton analyse.`;
 
     // 5. Call Lovable AI with tool calling for structured output
     console.log("Calling Lovable AI for analysis...");
