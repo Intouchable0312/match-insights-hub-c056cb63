@@ -13,7 +13,7 @@ interface RealLeagueGroupProps {
 }
 
 export function RealLeagueGroup({ leagueName, leagueLogo, leagueFlag, leagueCountry, matches }: RealLeagueGroupProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="space-y-3">

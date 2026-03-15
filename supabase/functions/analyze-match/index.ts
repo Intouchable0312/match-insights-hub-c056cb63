@@ -68,17 +68,21 @@ serve(async (req) => {
     let oddsData = null;
     let injuriesHomeData = null;
     let injuriesAwayData = null;
+    let lastHomeData = null;
+    let lastAwayData = null;
 
     try {
       // Fetch fixture statistics if match has started/finished
       const apiHeaders = { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" };
-      const [statsRes, h2hRes, standingsRes, oddsRes, injuriesHomeRes, injuriesAwayRes] = await Promise.allSettled([
+      const [statsRes, h2hRes, standingsRes, oddsRes, injuriesHomeRes, injuriesAwayRes, lastHomeRes, lastAwayRes] = await Promise.allSettled([
         fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=2024`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/odds?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/injuries?team=${match.home_team_id}&season=2024`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/injuries?team=${match.away_team_id}&season=2024`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${match.home_team_id}&last=10&status=FT-AET-PEN`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${match.away_team_id}&last=10&status=FT-AET-PEN`, { headers: apiHeaders }),
       ]);
 
       if (statsRes.status === "fulfilled" && statsRes.value.ok) {
@@ -99,6 +103,12 @@ serve(async (req) => {
       if (injuriesAwayRes.status === "fulfilled" && injuriesAwayRes.value.ok) {
         injuriesAwayData = await injuriesAwayRes.value.json();
       }
+      if (lastHomeRes.status === "fulfilled" && lastHomeRes.value.ok) {
+        lastHomeData = await lastHomeRes.value.json();
+      }
+      if (lastAwayRes.status === "fulfilled" && lastAwayRes.value.ok) {
+        lastAwayData = await lastAwayRes.value.json();
+      }
     } catch (apiErr) {
       console.error("Error fetching additional data:", apiErr);
     }
@@ -110,6 +120,7 @@ serve(async (req) => {
     if (standingsData?.response?.length > 0) sourceCount++;
     if (oddsData?.response?.length > 0) sourceCount++;
     if (injuriesHomeData?.response?.length > 0 || injuriesAwayData?.response?.length > 0) sourceCount++;
+    if (lastHomeData?.response?.length > 0 || lastAwayData?.response?.length > 0) sourceCount++;
 
     // 4. Build comprehensive prompt for AI analysis
     const h2hSummary = h2hData?.response?.length > 0
@@ -166,6 +177,31 @@ serve(async (req) => {
 
     const injuriesSummary = `${formatInjuries(injuriesHomeData, match.home_team_name)}\n\n${formatInjuries(injuriesAwayData, match.away_team_name)}`;
 
+    const formatRecentForm = (data: any, teamId: number, teamName: string) => {
+      try {
+        if (!data?.response?.length) return `${teamName}: Aucun résultat récent disponible`;
+        const results = data.response.slice(0, 10).map((f: any) => {
+          const isHome = f.teams.home.id === teamId;
+          const goalsFor = isHome ? f.goals.home : f.goals.away;
+          const goalsAgainst = isHome ? f.goals.away : f.goals.home;
+          const opponent = isHome ? f.teams.away.name : f.teams.home.name;
+          const venue = isHome ? 'Dom' : 'Ext';
+          let result = 'N';
+          if (goalsFor > goalsAgainst) result = 'V';
+          else if (goalsFor < goalsAgainst) result = 'D';
+          return `  ${result} ${goalsFor}-${goalsAgainst} vs ${opponent} (${venue}, ${f.fixture.date?.split("T")[0]})`;
+        });
+        const wins = results.filter((r: string) => r.trimStart().startsWith('V')).length;
+        const draws = results.filter((r: string) => r.trimStart().startsWith('N')).length;
+        const losses = results.filter((r: string) => r.trimStart().startsWith('D')).length;
+        return `${teamName} - Série: ${wins}V ${draws}N ${losses}D sur les ${results.length} derniers matchs:\n${results.join("\n")}`;
+      } catch {
+        return `${teamName}: Résultats récents indisponibles`;
+      }
+    };
+
+    const recentFormSummary = `${formatRecentForm(lastHomeData, match.home_team_id, match.home_team_name)}\n\n${formatRecentForm(lastAwayData, match.away_team_id, match.away_team_name)}`;
+
     const systemPrompt = `Tu es un expert en analyse de football et en statistiques sportives avancées. Tu analyses des matchs de football en utilisant toutes les données disponibles pour fournir des prédictions probabilistes précises et honnêtes.
 
 RÈGLES STRICTES:
@@ -174,6 +210,7 @@ RÈGLES STRICTES:
 - Si des données manquent, indique-le clairement et ajuste ton niveau de confiance
 - Sois honnête sur les limites de ton analyse
 - Les blessures et suspensions doivent fortement influencer ton analyse
+- La forme récente (séries de victoires/défaites) doit être un facteur majeur
 - Fournis une analyse structurée et détaillée en français`;
 
     const userPrompt = `Analyse ce match de football et fournis une prédiction détaillée.
@@ -188,6 +225,9 @@ MATCH:
 CLASSEMENT ACTUEL:
 ${standingsSummary}
 
+FORME RÉCENTE (10 derniers matchs par équipe):
+${recentFormSummary}
+
 CONFRONTATIONS DIRECTES (10 dernières):
 ${h2hSummary}
 
@@ -199,7 +239,7 @@ ${oddsSummary}
 
 SOURCES DE DONNÉES DISPONIBLES: ${sourceCount}
 
-Basé sur TOUTES les données ci-dessus (y compris les absences de joueurs), fournis ton analyse.`;
+Basé sur TOUTES les données ci-dessus (forme récente, absences de joueurs, classement, H2H, cotes), fournis ton analyse.`;
 
     // 5. Call Lovable AI with tool calling for structured output
     console.log("Calling Lovable AI for analysis...");

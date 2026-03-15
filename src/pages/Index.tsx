@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchMatches, DbMatch, getLeaguePriority } from '@/lib/api';
 import { RealLeagueGroup } from '@/components/RealLeagueGroup';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { Search, ChevronLeft, ChevronRight, Star, CheckCircle2, Loader2, AlertCircle, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Star, CheckCircle2, Loader2, AlertCircle, RefreshCw, SlidersHorizontal, X, Sun, Moon } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 
@@ -19,6 +19,12 @@ const Index = () => {
   const [analyzedOnly, setAnalyzedOnly] = useState(false);
   const [selectedLeagues, setSelectedLeagues] = useState<number[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+  }, [isDark]);
 
   const dateStr = format(date, 'yyyy-MM-dd');
   const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
@@ -162,8 +168,13 @@ const Index = () => {
               ANAP
             </h1>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => refetch()}>
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 rounded-full" 
+                onClick={() => setIsDark(!isDark)}
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground bg-surface px-4 py-2 rounded-full">
                 <span className="font-semibold text-foreground">{totalMatches}</span> matchs
