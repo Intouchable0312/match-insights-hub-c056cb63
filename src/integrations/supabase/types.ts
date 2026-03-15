@@ -14,7 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analyses: {
+        Row: {
+          analysis_type: string
+          completed_at: string | null
+          created_at: string
+          data_quality_score: number | null
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          match_id: string
+          model_version: string | null
+          prediction: Json | null
+          raw_response: string | null
+          report: Json | null
+          requested_at: string
+          source_count: number | null
+          status: string
+          uncertainty_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          analysis_type?: string
+          completed_at?: string | null
+          created_at?: string
+          data_quality_score?: number | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          match_id: string
+          model_version?: string | null
+          prediction?: Json | null
+          raw_response?: string | null
+          report?: Json | null
+          requested_at?: string
+          source_count?: number | null
+          status?: string
+          uncertainty_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          analysis_type?: string
+          completed_at?: string | null
+          created_at?: string
+          data_quality_score?: number | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          match_id?: string
+          model_version?: string | null
+          prediction?: Json | null
+          raw_response?: string | null
+          report?: Json | null
+          requested_at?: string
+          source_count?: number | null
+          status?: string
+          uncertainty_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          api_fixture_id: number
+          away_score: number | null
+          away_score_ht: number | null
+          away_team_id: number
+          away_team_logo: string | null
+          away_team_name: string
+          created_at: string
+          fetched_at: string
+          home_score: number | null
+          home_score_ht: number | null
+          home_team_id: number
+          home_team_logo: string | null
+          home_team_name: string
+          id: string
+          kickoff: string
+          league_country: string
+          league_flag: string | null
+          league_id: number
+          league_logo: string | null
+          league_name: string
+          league_round: string | null
+          status_long: string
+          status_short: string
+          updated_at: string
+          venue_city: string | null
+          venue_name: string | null
+        }
+        Insert: {
+          api_fixture_id: number
+          away_score?: number | null
+          away_score_ht?: number | null
+          away_team_id: number
+          away_team_logo?: string | null
+          away_team_name: string
+          created_at?: string
+          fetched_at?: string
+          home_score?: number | null
+          home_score_ht?: number | null
+          home_team_id: number
+          home_team_logo?: string | null
+          home_team_name: string
+          id?: string
+          kickoff: string
+          league_country: string
+          league_flag?: string | null
+          league_id: number
+          league_logo?: string | null
+          league_name: string
+          league_round?: string | null
+          status_long?: string
+          status_short?: string
+          updated_at?: string
+          venue_city?: string | null
+          venue_name?: string | null
+        }
+        Update: {
+          api_fixture_id?: number
+          away_score?: number | null
+          away_score_ht?: number | null
+          away_team_id?: number
+          away_team_logo?: string | null
+          away_team_name?: string
+          created_at?: string
+          fetched_at?: string
+          home_score?: number | null
+          home_score_ht?: number | null
+          home_team_id?: number
+          home_team_logo?: string | null
+          home_team_name?: string
+          id?: string
+          kickoff?: string
+          league_country?: string
+          league_flag?: string | null
+          league_id?: number
+          league_logo?: string | null
+          league_name?: string
+          league_round?: string | null
+          status_long?: string
+          status_short?: string
+          updated_at?: string
+          venue_city?: string | null
+          venue_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
