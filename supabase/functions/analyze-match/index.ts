@@ -602,6 +602,8 @@ serve(async (req) => {
       espnHomeStats, espnAwayStats,
       espnHomeResults, espnAwayResults,
       fdukStats,
+      homeInjuries, awayInjuries,
+      homeSchedule, awaySchedule,
     ] = await Promise.all([
       fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
@@ -615,6 +617,10 @@ serve(async (req) => {
       fetchESPNTeamResults(match.home_team_name, match.league_id),
       fetchESPNTeamResults(match.away_team_name, match.league_id),
       fetchFootballDataUK(match.league_id, currentSeason, match.home_team_name, match.away_team_name),
+      fetchESPNInjuries(match.home_team_id, match.home_team_name, match.league_id),
+      fetchESPNInjuries(match.away_team_id, match.away_team_name, match.league_id),
+      fetchESPNSchedule(match.home_team_id, match.home_team_name, match.league_id),
+      fetchESPNSchedule(match.away_team_id, match.away_team_name, match.league_id),
     ]);
 
     // TheSportsDB last/next events
@@ -633,11 +639,19 @@ serve(async (req) => {
 
     // Recent form
     let recentFormTxt = "";
-    if (espnHomeResults) recentFormTxt += `${match.home_team_name}:\n${espnHomeResults}`;
-    if (espnAwayResults) recentFormTxt += `\n${match.away_team_name}:\n${espnAwayResults}`;
+    if (homeSchedule) recentFormTxt += homeSchedule;
+    if (awaySchedule) recentFormTxt += (recentFormTxt ? "\n\n" : "") + awaySchedule;
+    if (espnHomeResults) recentFormTxt += (recentFormTxt ? "\n\n" : "") + `${match.home_team_name}:\n${espnHomeResults}`;
+    if (espnAwayResults) recentFormTxt += (recentFormTxt ? "\n\n" : "") + `${match.away_team_name}:\n${espnAwayResults}`;
     if (homeEventsTxt) recentFormTxt += `\n\n${homeEventsTxt}`;
     if (awayEventsTxt) recentFormTxt += `\n\n${awayEventsTxt}`;
     if (!recentFormTxt) recentFormTxt = "Forme récente non disponible";
+
+    // Injuries
+    let injuriesTxt = "";
+    if (homeInjuries) injuriesTxt += homeInjuries;
+    if (awayInjuries) injuriesTxt += (injuriesTxt ? "\n\n" : "") + awayInjuries;
+    if (!injuriesTxt) injuriesTxt = "Aucune information sur les blessures disponible";
 
     // H2H
     const h2hTxt = tsdbH2H || "H2H non disponible";
@@ -657,6 +671,8 @@ serve(async (req) => {
     check(!!(homeEventsTxt || awayEventsTxt));
     check(!!(espnHomeStats || espnAwayStats));
     check(!!fdukStats);
+    check(!injuriesTxt.includes("Aucune"));
+    check(!!(homeSchedule || awaySchedule));
 
     console.log(`\n📊 ${srcCount} data sources collected`);
 
@@ -666,15 +682,16 @@ serve(async (req) => {
 RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 25%, Stats détaillées (tirs, corners, cotes) 25%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 5%
+3. Pondération: Forme 20%, Stats détaillées 20%, Blessures/Absences 20%, Classement 15%, H2H 10%, Météo/Dom 10%, Calendrier 5%
 4. Séries victoires/défaites = facteur MAJEUR
 5. Paris: recommande UNIQUEMENT probabilité > 55%, justifie avec données
 6. Prends en compte la météo si disponible (pluie → moins de buts, vent → jeu perturbé)
 7. Prends en compte le calendrier (congestion de matchs = fatigue)
 8. Utilise les STATS DÉTAILLÉES (tirs cadrés, corners, fautes, cartons) pour affiner l'analyse
 9. Utilise les COTES BOOKMAKERS pour valider/invalider tes prédictions
-10. Réponds en français
-11. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
+10. Les BLESSURES et ABSENCES sont critiques — un joueur clé absent peut tout changer
+11. Réponds en français
+12. IMPORTANT pour "data_quality_assessment": Évalue la qualité SANS JAMAIS mentionner de nom de source/API/site. Parle uniquement de "données disponibles".`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${match.home_team_name} vs ${match.away_team_name}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
@@ -685,6 +702,9 @@ ${standingsTxt}
 
 ══ FORME RÉCENTE & SÉRIES ══
 ${recentFormTxt}
+
+══ BLESSURES & ABSENCES ══
+${injuriesTxt}
 
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
@@ -702,7 +722,7 @@ ${leagueStatsTxt || "Non disponible"}
 ${teamInfoTxt}
 
 ⚠️ RAPPEL: Probabilités en 0-100. home+draw+away=100. Analyse TOUT et fournis les paris les plus sécurisés.
-⚠️ data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE/API/SITE. Parle uniquement de "données disponibles".`;
+⚠️ data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE/API/SITE.`;
 
     console.log("🤖 Calling AI...");
 
