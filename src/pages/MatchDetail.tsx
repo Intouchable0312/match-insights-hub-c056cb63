@@ -1,63 +1,121 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_MATCHES, MOCK_FULL_ANALYSIS, COUNTRY_FLAGS } from '@/data/mockData';
-import { useState, useEffect, useCallback } from 'react';
-import { FullAnalysis } from '@/types/match';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { analyzeMatch, getAnalysis, DbAnalysis } from '@/lib/api';
 import { AnalysisLoader } from '@/components/AnalysisLoader';
-import { AnalysisReport } from '@/components/AnalysisReport';
+import { RealAnalysisReport } from '@/components/RealAnalysisReport';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Zap, RefreshCw, Eye, Clock, MapPin, Database, Activity } from 'lucide-react';
+import { ArrowLeft, Zap, RefreshCw, Eye, Clock, MapPin, Activity, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 const ANALYSIS_STEPS = [
   'Récupération des données match',
-  'Agrégation des sources gratuites',
-  'Calcul des features',
-  'Estimation probabiliste',
+  'Récupération des confrontations directes',
+  'Récupération du classement',
+  'Récupération des cotes',
+  'Agrégation des sources',
+  'Analyse IA en cours',
   'Génération du rapport',
 ];
 
 export default function MatchDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const match = MOCK_MATCHES.find(m => m.id === id);
+  const { toast } = useToast();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<FullAnalysis | null>(
-    match?.analysisStatus === 'completed' ? { ...MOCK_FULL_ANALYSIS, matchId: match.id } : null
+  const [analysis, setAnalysis] = useState<DbAnalysis | null>(null);
+  const [steps, setSteps] = useState<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }[]>(
+    ANALYSIS_STEPS.map(l => ({ label: l, status: 'pending' as const }))
   );
-  const [steps, setSteps] = useState<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }[]>(ANALYSIS_STEPS.map(l => ({ label: l, status: 'pending' as const })));
   const [progress, setProgress] = useState(0);
-  const [analysisMode, setAnalysisMode] = useState<'quick' | 'full'>('full');
 
-  const runAnalysis = useCallback(() => {
+  // Fetch match from DB
+  const { data: match, isLoading: matchLoading, error: matchError } = useQuery({
+    queryKey: ['match', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('id', id!)
+        .single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Fetch existing analysis
+  useEffect(() => {
+    if (id) {
+      getAnalysis(id).then(a => {
+        if (a && a.status === 'completed') setAnalysis(a);
+      }).catch(console.error);
+    }
+  }, [id]);
+
+  const runAnalysis = async () => {
+    if (!id) return;
     setIsAnalyzing(true);
+    setAnalysis(null);
     setProgress(0);
     setSteps(ANALYSIS_STEPS.map(l => ({ label: l, status: 'pending' as const })));
 
+    // Simulate step progression while real analysis runs
     let step = 0;
     const interval = setInterval(() => {
-      if (step < ANALYSIS_STEPS.length) {
+      if (step < ANALYSIS_STEPS.length - 1) {
         setSteps(prev => prev.map((s, i) => ({
           ...s,
           status: i < step ? 'done' : i === step ? 'active' : 'pending',
         })));
-        setProgress(Math.round(((step + 1) / ANALYSIS_STEPS.length) * 100));
+        setProgress(Math.round(((step + 1) / ANALYSIS_STEPS.length) * 90));
         step++;
-      } else {
-        clearInterval(interval);
-        setIsAnalyzing(false);
-        setAnalysis({ ...MOCK_FULL_ANALYSIS, matchId: id! });
       }
-    }, 800);
+    }, 1500);
 
-    return () => clearInterval(interval);
-  }, [id]);
+    try {
+      const result = await analyzeMatch(id, 'full');
+      clearInterval(interval);
+      setSteps(ANALYSIS_STEPS.map(l => ({ label: l, status: 'done' as const })));
+      setProgress(100);
 
-  if (!match) {
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setAnalysis(result);
+        toast({ title: 'Analyse terminée', description: 'Le rapport a été généré avec succès.' });
+      }, 500);
+    } catch (err) {
+      clearInterval(interval);
+      setIsAnalyzing(false);
+      setSteps(prev => prev.map((s, i) => ({
+        ...s,
+        status: s.status === 'active' ? 'error' : s.status,
+      })));
+      toast({
+        title: 'Erreur',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  if (matchLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (matchError || !match) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
+          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
           <p className="text-muted-foreground">Match introuvable</p>
           <Button variant="outline" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Retour
@@ -69,11 +127,13 @@ export default function MatchDetail() {
 
   const time = new Date(match.kickoff).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   const dateStr = new Date(match.kickoff).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const flag = COUNTRY_FLAGS[match.league.countryCode] || '⚽';
+  const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
+  const finishedStatuses = ['FT', 'AET', 'PEN'];
+  const isLive = liveStatuses.includes(match.status_short);
+  const isFinished = finishedStatuses.includes(match.status_short);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="container max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
@@ -94,24 +154,29 @@ export default function MatchDetail() {
         {/* Match Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-6 text-center space-y-4">
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>{flag}</span>
-            <span>{match.league.name}</span>
+            {match.league_logo && <img src={match.league_logo} alt="" className="h-4 w-4" />}
+            <span>{match.league_name}</span>
             <span>·</span>
-            <span>{match.league.country}</span>
+            <span>{match.league_country}</span>
+            {match.league_round && <><span>·</span><span>{match.league_round}</span></>}
           </div>
 
           <div className="flex items-center justify-center gap-6">
             <div className="text-center">
-              <div className="h-16 w-16 rounded-xl bg-surface flex items-center justify-center mx-auto mb-2">
-                <span className="font-display font-bold text-lg">{match.homeTeam.shortName}</span>
+              <div className="h-16 w-16 rounded-xl bg-surface flex items-center justify-center mx-auto mb-2 overflow-hidden">
+                {match.home_team_logo ? (
+                  <img src={match.home_team_logo} alt={match.home_team_name} className="h-10 w-10 object-contain" />
+                ) : (
+                  <span className="font-display font-bold text-lg">{match.home_team_name.slice(0, 3).toUpperCase()}</span>
+                )}
               </div>
-              <p className="font-display font-semibold text-sm">{match.homeTeam.name}</p>
+              <p className="font-display font-semibold text-sm">{match.home_team_name}</p>
             </div>
 
             <div className="text-center">
-              {match.status === 'finished' || match.status === 'live' ? (
+              {(isFinished || isLive) && match.home_score != null ? (
                 <div className="font-display font-bold text-3xl">
-                  {match.homeScore} <span className="text-muted-foreground">-</span> {match.awayScore}
+                  {match.home_score} <span className="text-muted-foreground">-</span> {match.away_score}
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -119,62 +184,42 @@ export default function MatchDetail() {
                   <p className="text-xs text-muted-foreground capitalize">{dateStr}</p>
                 </div>
               )}
-              {match.status === 'live' && (
+              {isLive && (
                 <Badge className="bg-live/20 text-live border-live/30 badge-live mt-1">LIVE</Badge>
               )}
             </div>
 
             <div className="text-center">
-              <div className="h-16 w-16 rounded-xl bg-surface flex items-center justify-center mx-auto mb-2">
-                <span className="font-display font-bold text-lg">{match.awayTeam.shortName}</span>
+              <div className="h-16 w-16 rounded-xl bg-surface flex items-center justify-center mx-auto mb-2 overflow-hidden">
+                {match.away_team_logo ? (
+                  <img src={match.away_team_logo} alt={match.away_team_name} className="h-10 w-10 object-contain" />
+                ) : (
+                  <span className="font-display font-bold text-lg">{match.away_team_name.slice(0, 3).toUpperCase()}</span>
+                )}
               </div>
-              <p className="font-display font-semibold text-sm">{match.awayTeam.name}</p>
+              <p className="font-display font-semibold text-sm">{match.away_team_name}</p>
             </div>
           </div>
 
-          {/* Meta info */}
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
-            {match.venue && (
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{match.venue}</span>
+            {match.venue_name && (
+              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{match.venue_name}{match.venue_city ? `, ${match.venue_city}` : ''}</span>
             )}
             <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{time}</span>
-            <span className="flex items-center gap-1"><Database className="h-3 w-3" />Qualité : {match.dataQuality}</span>
           </div>
-
-          {/* Quick Analysis preview */}
-          {match.quickAnalysis && !analysis && !isAnalyzing && (
-            <div className="pt-2 border-t border-border">
-              <p className="text-[10px] text-muted-foreground mb-2">Aperçu rapide</p>
-              <div className="flex justify-center gap-4">
-                <div><span className="text-xs text-muted-foreground">Dom.</span> <span className="font-display font-bold text-primary">{match.quickAnalysis.homeWinProb}%</span></div>
-                <div><span className="text-xs text-muted-foreground">Nul</span> <span className="font-display font-bold">{match.quickAnalysis.drawProb}%</span></div>
-                <div><span className="text-xs text-muted-foreground">Ext.</span> <span className="font-display font-bold text-info">{match.quickAnalysis.awayWinProb}%</span></div>
-              </div>
-              <div className="flex justify-center gap-4 mt-2 text-xs text-muted-foreground">
-                <span>ELO Dom. {match.quickAnalysis.homeElo}</span>
-                <span>ELO Ext. {match.quickAnalysis.awayElo}</span>
-                <span>Forme: {match.quickAnalysis.homeForm} / {match.quickAnalysis.awayForm}</span>
-              </div>
-            </div>
-          )}
         </motion.div>
 
         {/* Action Buttons */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-wrap gap-2">
           {!analysis && !isAnalyzing && (
             <Button className="flex-1 glow-primary gap-2" onClick={runAnalysis}>
-              <Zap className="h-4 w-4" /> Lancer l'analyse complète
+              <Zap className="h-4 w-4" /> Lancer l'analyse IA
             </Button>
           )}
           {analysis && !isAnalyzing && (
-            <>
-              <Button variant="outline" className="flex-1 gap-2" onClick={runAnalysis}>
-                <RefreshCw className="h-4 w-4" /> Actualiser l'analyse
-              </Button>
-              <Button variant="outline" className="gap-2">
-                <Eye className="h-4 w-4" /> Mode expert
-              </Button>
-            </>
+            <Button variant="outline" className="flex-1 gap-2" onClick={runAnalysis}>
+              <RefreshCw className="h-4 w-4" /> Actualiser l'analyse
+            </Button>
           )}
           {isAnalyzing && (
             <Button variant="outline" className="flex-1" onClick={() => navigate('/')}>
@@ -185,7 +230,7 @@ export default function MatchDetail() {
 
         {/* Analysis Content */}
         {isAnalyzing && <AnalysisLoader steps={steps} progress={progress} />}
-        {analysis && !isAnalyzing && <AnalysisReport analysis={analysis} />}
+        {analysis && !isAnalyzing && <RealAnalysisReport analysis={analysis} />}
       </main>
     </div>
   );
