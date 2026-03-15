@@ -66,22 +66,19 @@ serve(async (req) => {
     let h2hData = null;
     let standingsData = null;
     let oddsData = null;
+    let injuriesHomeData = null;
+    let injuriesAwayData = null;
 
     try {
       // Fetch fixture statistics if match has started/finished
-      const [statsRes, h2hRes, standingsRes, oddsRes] = await Promise.allSettled([
-        fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${match.api_fixture_id}`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
-        fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
-        fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=2024`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
-        fetch(`https://v3.football.api-sports.io/odds?fixture=${match.api_fixture_id}`, {
-          headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
-        }),
+      const apiHeaders = { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" };
+      const [statsRes, h2hRes, standingsRes, oddsRes, injuriesHomeRes, injuriesAwayRes] = await Promise.allSettled([
+        fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=2024`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/odds?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/injuries?team=${match.home_team_id}&season=2024`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/injuries?team=${match.away_team_id}&season=2024`, { headers: apiHeaders }),
       ]);
 
       if (statsRes.status === "fulfilled" && statsRes.value.ok) {
@@ -96,6 +93,12 @@ serve(async (req) => {
       if (oddsRes.status === "fulfilled" && oddsRes.value.ok) {
         oddsData = await oddsRes.value.json();
       }
+      if (injuriesHomeRes.status === "fulfilled" && injuriesHomeRes.value.ok) {
+        injuriesHomeData = await injuriesHomeRes.value.json();
+      }
+      if (injuriesAwayRes.status === "fulfilled" && injuriesAwayRes.value.ok) {
+        injuriesAwayData = await injuriesAwayRes.value.json();
+      }
     } catch (apiErr) {
       console.error("Error fetching additional data:", apiErr);
     }
@@ -106,6 +109,7 @@ serve(async (req) => {
     if (h2hData?.response?.length > 0) sourceCount++;
     if (standingsData?.response?.length > 0) sourceCount++;
     if (oddsData?.response?.length > 0) sourceCount++;
+    if (injuriesHomeData?.response?.length > 0 || injuriesAwayData?.response?.length > 0) sourceCount++;
 
     // 4. Build comprehensive prompt for AI analysis
     const h2hSummary = h2hData?.response?.length > 0
@@ -145,6 +149,23 @@ serve(async (req) => {
       }
     })();
 
+    const formatInjuries = (data: any, teamName: string) => {
+      try {
+        if (!data?.response?.length) return `${teamName}: Aucune blessure/suspension connue`;
+        const injuries = data.response.slice(0, 15).map((inj: any) => {
+          const player = inj.player?.name || "Joueur inconnu";
+          const type = inj.player?.type || "Inconnu"; // "Missing Fixture" / "Questionable" / etc.
+          const reason = inj.player?.reason || "Raison inconnue";
+          return `  - ${player}: ${reason} (${type})`;
+        });
+        return `${teamName} (${data.response.length} joueurs):\n${injuries.join("\n")}`;
+      } catch {
+        return `${teamName}: Données indisponibles`;
+      }
+    };
+
+    const injuriesSummary = `${formatInjuries(injuriesHomeData, match.home_team_name)}\n\n${formatInjuries(injuriesAwayData, match.away_team_name)}`;
+
     const systemPrompt = `Tu es un expert en analyse de football et en statistiques sportives avancées. Tu analyses des matchs de football en utilisant toutes les données disponibles pour fournir des prédictions probabilistes précises et honnêtes.
 
 RÈGLES STRICTES:
@@ -152,6 +173,7 @@ RÈGLES STRICTES:
 - Tu ne dois JAMAIS inventer de données - utilise uniquement les données fournies
 - Si des données manquent, indique-le clairement et ajuste ton niveau de confiance
 - Sois honnête sur les limites de ton analyse
+- Les blessures et suspensions doivent fortement influencer ton analyse
 - Fournis une analyse structurée et détaillée en français`;
 
     const userPrompt = `Analyse ce match de football et fournis une prédiction détaillée.
@@ -169,12 +191,15 @@ ${standingsSummary}
 CONFRONTATIONS DIRECTES (10 dernières):
 ${h2hSummary}
 
+BLESSURES & SUSPENSIONS:
+${injuriesSummary}
+
 COTES DES BOOKMAKERS:
 ${oddsSummary}
 
 SOURCES DE DONNÉES DISPONIBLES: ${sourceCount}
 
-Basé sur TOUTES les données ci-dessus, fournis ton analyse.`;
+Basé sur TOUTES les données ci-dessus (y compris les absences de joueurs), fournis ton analyse.`;
 
     // 5. Call Lovable AI with tool calling for structured output
     console.log("Calling Lovable AI for analysis...");
