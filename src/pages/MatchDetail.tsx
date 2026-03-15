@@ -27,6 +27,14 @@ export default function MatchDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Restore theme from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('anap-theme');
+    const isDark = stored ? stored === 'dark' : true;
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+  }, []);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<DbAnalysis | null>(null);
   const [steps, setSteps] = useState<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }[]>(
