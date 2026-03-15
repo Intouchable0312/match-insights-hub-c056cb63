@@ -68,6 +68,8 @@ serve(async (req) => {
     let oddsData = null;
     let injuriesHomeData = null;
     let injuriesAwayData = null;
+    let lastHomeData = null;
+    let lastAwayData = null;
 
     try {
       // Fetch fixture statistics if match has started/finished
