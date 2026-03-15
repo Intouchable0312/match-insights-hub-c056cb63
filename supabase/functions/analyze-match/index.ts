@@ -103,6 +103,12 @@ serve(async (req) => {
       if (injuriesAwayRes.status === "fulfilled" && injuriesAwayRes.value.ok) {
         injuriesAwayData = await injuriesAwayRes.value.json();
       }
+      if (lastHomeRes.status === "fulfilled" && lastHomeRes.value.ok) {
+        lastHomeData = await lastHomeRes.value.json();
+      }
+      if (lastAwayRes.status === "fulfilled" && lastAwayRes.value.ok) {
+        lastAwayData = await lastAwayRes.value.json();
+      }
     } catch (apiErr) {
       console.error("Error fetching additional data:", apiErr);
     }
