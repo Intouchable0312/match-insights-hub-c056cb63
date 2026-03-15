@@ -185,7 +185,7 @@ export default function MatchDetail() {
               )}
             </div>
 
-            <div className="text-center">
+            <div className="text-center flex-1 min-w-0 max-w-[120px]">
               <div className="h-18 w-18 rounded-2xl bg-surface flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ height: 72, width: 72 }}>
                 {match.away_team_logo ? (
                   <img src={match.away_team_logo} alt={match.away_team_name} className="h-12 w-12 object-contain" />
@@ -193,7 +193,7 @@ export default function MatchDetail() {
                   <span className="font-display font-black text-lg">{match.away_team_name.slice(0, 3).toUpperCase()}</span>
                 )}
               </div>
-              <p className="font-display font-bold text-sm">{match.away_team_name}</p>
+              <p className="font-display font-bold text-sm truncate">{match.away_team_name}</p>
             </div>
           </div>
 
