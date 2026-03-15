@@ -541,6 +541,7 @@ serve(async (req) => {
     check(!!leagueStatsTxt);
     check(!!(homeEventsTxt || awayEventsTxt));
     check(!!(espnHomeStats || espnAwayStats));
+    check(!!fdukStats);
 
     console.log(`\n📊 ${srcCount} data sources collected`);
 
@@ -550,13 +551,15 @@ serve(async (req) => {
 RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 25%, Stats 20%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 10%
+3. Pondération: Forme 25%, Stats détaillées (tirs, corners, cotes) 25%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 5%
 4. Séries victoires/défaites = facteur MAJEUR
 5. Paris: recommande UNIQUEMENT probabilité > 55%, justifie avec données
 6. Prends en compte la météo si disponible (pluie → moins de buts, vent → jeu perturbé)
 7. Prends en compte le calendrier (congestion de matchs = fatigue)
-8. Réponds en français
-9. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
+8. Utilise les STATS DÉTAILLÉES (tirs cadrés, corners, fautes, cartons) pour affiner l'analyse
+9. Utilise les COTES BOOKMAKERS pour valider/invalider tes prédictions
+10. Réponds en français
+11. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${match.home_team_name} vs ${match.away_team_name}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
@@ -570,6 +573,9 @@ ${recentFormTxt}
 
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
+
+══ STATS DÉTAILLÉES SAISON (tirs, corners, cartons, cotes) ══
+${fdukStats || "Non disponible"}
 
 ══ MÉTÉO AU STADE ══
 ${weatherTxt || "Non disponible"}
