@@ -109,6 +109,7 @@ serve(async (req) => {
     if (h2hData?.response?.length > 0) sourceCount++;
     if (standingsData?.response?.length > 0) sourceCount++;
     if (oddsData?.response?.length > 0) sourceCount++;
+    if (injuriesHomeData?.response?.length > 0 || injuriesAwayData?.response?.length > 0) sourceCount++;
 
     // 4. Build comprehensive prompt for AI analysis
     const h2hSummary = h2hData?.response?.length > 0
