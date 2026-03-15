@@ -98,24 +98,24 @@ export async function getAnalysis(matchId: string): Promise<DbAnalysis | null> {
   return (data && data.length > 0) ? data[0] as unknown as DbAnalysis : null;
 }
 
-// League priority mapping (TheSportsDB IDs)
+// League priority mapping (API-Football IDs)
 const LEAGUE_PRIORITIES: Record<number, number> = {
-  4480: 0,  // Champions League
-  4334: 1,  // Ligue 1
-  4328: 1,  // Premier League
-  4335: 1,  // La Liga
-  4332: 1,  // Serie A
-  4331: 1,  // Bundesliga
-  4481: 2,  // Europa League
-  4351: 3,  // Brazilian Serie A
-  4347: 4,  // MLS
-  4337: 5,  // Eredivisie
-  4344: 5,  // Primeira Liga
-  4336: 5,  // Championship
-  4346: 6,  // Super Lig
-  4338: 6,  // Belgian Pro League
-  4330: 7,  // Scottish Premiership
-  4396: 7,  // Ligue 2
+  2: 0,     // Champions League
+  61: 1,    // Ligue 1
+  39: 1,    // Premier League
+  140: 1,   // La Liga
+  135: 1,   // Serie A
+  78: 1,    // Bundesliga
+  3: 2,     // Europa League
+  71: 3,    // Brazilian Serie A
+  253: 4,   // MLS
+  88: 5,    // Eredivisie
+  94: 5,    // Primeira Liga
+  40: 5,    // Championship
+  203: 6,   // Super Lig
+  144: 6,   // Belgian Pro League
+  179: 7,   // Scottish Premiership
+  63: 7,    // Ligue 2
 };
 
 export function getLeaguePriority(leagueId: number): number {

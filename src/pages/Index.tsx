@@ -36,7 +36,8 @@ const Index = () => {
   const { data: matches, isLoading, error, refetch } = useQuery({
     queryKey: ['matches', dateStr],
     queryFn: () => fetchMatches(dateStr),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000, // 30s stale time for fresher data
+    refetchInterval: isToday ? 60 * 1000 : false, // Auto-refresh every 60s for today
     retry: 2,
   });
 
