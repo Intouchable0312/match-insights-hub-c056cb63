@@ -6,26 +6,45 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// API-Football league IDs for popular leagues
-const POPULAR_LEAGUE_IDS = [
-  61,   // Ligue 1
-  39,   // Premier League
-  140,  // La Liga
-  135,  // Serie A
-  78,   // Bundesliga
-  2,    // Champions League
-  3,    // Europa League
-  848,  // Conference League
-  253,  // MLS
-  307,  // Saudi Pro League
-  88,   // Eredivisie
-  94,   // Primeira Liga
-  40,   // Championship
-  203,  // Super Lig
-  144,  // Belgian Pro League
-  179,  // Scottish Premiership
-  13,   // Copa Libertadores
+// TheSportsDB league IDs mapped to our internal league IDs
+// We use TheSportsDB idLeague as our league_id now
+const LEAGUES = [
+  { tsdbId: "4334", name: "Ligue 1", country: "France", leagueId: 4334 },
+  { tsdbId: "4328", name: "English Premier League", country: "England", leagueId: 4328 },
+  { tsdbId: "4335", name: "Spanish La Liga", country: "Spain", leagueId: 4335 },
+  { tsdbId: "4332", name: "Italian Serie A", country: "Italy", leagueId: 4332 },
+  { tsdbId: "4331", name: "German Bundesliga", country: "Germany", leagueId: 4331 },
+  { tsdbId: "4480", name: "UEFA Champions League", country: "Europe", leagueId: 4480 },
+  { tsdbId: "4481", name: "UEFA Europa League", country: "Europe", leagueId: 4481 },
+  { tsdbId: "4344", name: "Primeira Liga", country: "Portugal", leagueId: 4344 },
+  { tsdbId: "4337", name: "Eredivisie", country: "Netherlands", leagueId: 4337 },
+  { tsdbId: "4338", name: "Belgian Pro League", country: "Belgium", leagueId: 4338 },
+  { tsdbId: "4346", name: "Super Lig", country: "Turkey", leagueId: 4346 },
+  { tsdbId: "4330", name: "Scottish Premiership", country: "Scotland", leagueId: 4330 },
+  { tsdbId: "4347", name: "MLS", country: "USA", leagueId: 4347 },
+  { tsdbId: "4351", name: "Brazilian Serie A", country: "Brazil", leagueId: 4351 },
+  { tsdbId: "4336", name: "English Championship", country: "England", leagueId: 4336 },
+  { tsdbId: "4396", name: "Ligue 2", country: "France", leagueId: 4396 },
+  { tsdbId: "4339", name: "Liga Portugal 2", country: "Portugal", leagueId: 4339 },
 ];
+
+async function fetchLeagueEvents(tsdbId: string, date: string, label: string): Promise<any[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${date}&l=${tsdbId}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data?.events || [];
+  } catch {
+    console.error(`  ✗ ${label}: fetch failed`);
+    return [];
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -33,11 +52,6 @@ serve(async (req) => {
   }
 
   try {
-    const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY");
-    if (!RAPIDAPI_KEY) {
-      throw new Error("RAPIDAPI_KEY is not configured");
-    }
-
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -49,68 +63,61 @@ serve(async (req) => {
     const url = new URL(req.url);
     const dateParam = url.searchParams.get("date") || new Date().toISOString().split("T")[0];
 
-    console.log(`Fetching matches for date: ${dateParam}`);
+    console.log(`Fetching matches for date: ${dateParam} via TheSportsDB`);
 
-    // Fetch fixtures from API-Football
-    const response = await fetch(
-      `https://v3.football.api-sports.io/fixtures?date=${dateParam}`,
-      {
-        headers: {
-          "x-rapidapi-key": RAPIDAPI_KEY,
-          "x-rapidapi-host": "v3.football.api-sports.io",
-        },
-      }
+    // Fetch all leagues in parallel
+    const results = await Promise.all(
+      LEAGUES.map(league =>
+        fetchLeagueEvents(league.tsdbId, dateParam, league.name)
+          .then(events => events.map(e => ({ ...e, _league: league })))
+      )
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API-Football error [${response.status}]:`, errorText);
-      throw new Error(`API-Football returned ${response.status}`);
-    }
+    const allEvents = results.flat();
+    console.log(`Got ${allEvents.length} total events from TheSportsDB`);
 
-    const data = await response.json();
-    
-    if (data.errors && Object.keys(data.errors).length > 0) {
-      console.error("API-Football errors:", JSON.stringify(data.errors));
-      throw new Error(`API-Football error: ${JSON.stringify(data.errors)}`);
-    }
+    // Map to our DB schema
+    const matchRows = allEvents
+      .filter((e: any) => e.strSport === "Soccer" || !e.strSport) // Only soccer
+      .map((e: any) => {
+        const kickoff = e.strTimestamp || `${e.dateEvent}T${e.strTime || "00:00:00"}+00:00`;
+        const statusMap: Record<string, { short: string; long: string }> = {
+          "Match Finished": { short: "FT", long: "Match Finished" },
+          "Not Started": { short: "NS", long: "Not Started" },
+          "Match Postponed": { short: "PST", long: "Match Postponed" },
+          "Match Cancelled": { short: "CANC", long: "Match Cancelled" },
+        };
+        const status = statusMap[e.strStatus] || { short: e.strStatus?.slice(0, 5) || "NS", long: e.strStatus || "Not Started" };
 
-    const fixtures = data.response || [];
-    console.log(`Got ${fixtures.length} total fixtures`);
+        return {
+          api_fixture_id: parseInt(e.idEvent) || 0,
+          league_id: e._league.leagueId,
+          league_name: e.strLeague || e._league.name,
+          league_country: e._league.country,
+          league_logo: e.strLeagueBadge || null,
+          league_flag: null,
+          league_round: e.intRound ? `Round ${e.intRound}` : null,
+          home_team_id: parseInt(e.idHomeTeam) || 0,
+          home_team_name: e.strHomeTeam || "?",
+          home_team_logo: e.strHomeTeamBadge || null,
+          away_team_id: parseInt(e.idAwayTeam) || 0,
+          away_team_name: e.strAwayTeam || "?",
+          away_team_logo: e.strAwayTeamBadge || null,
+          kickoff,
+          venue_name: e.strVenue || null,
+          venue_city: e.strCity || null,
+          status_short: status.short,
+          status_long: status.long,
+          home_score: e.intHomeScore != null ? parseInt(e.intHomeScore) : null,
+          away_score: e.intAwayScore != null ? parseInt(e.intAwayScore) : null,
+          home_score_ht: e.intHomeScore_HT != null ? parseInt(e.intHomeScore_HT) : null,
+          away_score_ht: e.intAwayScore_HT != null ? parseInt(e.intAwayScore_HT) : null,
+          fetched_at: new Date().toISOString(),
+        };
+      })
+      .filter((m: any) => m.api_fixture_id > 0);
 
-    // Filter to popular leagues only
-    const popularFixtures = fixtures.filter((f: any) =>
-      POPULAR_LEAGUE_IDS.includes(f.league.id)
-    );
-
-    console.log(`${popularFixtures.length} fixtures in popular leagues`);
-
-    // Upsert matches into database
-    const matchRows = popularFixtures.map((f: any) => ({
-      api_fixture_id: f.fixture.id,
-      league_id: f.league.id,
-      league_name: f.league.name,
-      league_country: f.league.country,
-      league_logo: f.league.logo,
-      league_flag: f.league.flag,
-      league_round: f.league.round,
-      home_team_id: f.teams.home.id,
-      home_team_name: f.teams.home.name,
-      home_team_logo: f.teams.home.logo,
-      away_team_id: f.teams.away.id,
-      away_team_name: f.teams.away.name,
-      away_team_logo: f.teams.away.logo,
-      kickoff: f.fixture.date,
-      venue_name: f.fixture.venue?.name,
-      venue_city: f.fixture.venue?.city,
-      status_short: f.fixture.status.short,
-      status_long: f.fixture.status.long,
-      home_score: f.goals.home,
-      away_score: f.goals.away,
-      home_score_ht: f.score?.halftime?.home,
-      away_score_ht: f.score?.halftime?.away,
-      fetched_at: new Date().toISOString(),
-    }));
+    console.log(`${matchRows.length} valid match rows to upsert`);
 
     if (matchRows.length > 0) {
       const { error: upsertError } = await supabase
@@ -123,7 +130,7 @@ serve(async (req) => {
       }
     }
 
-    // Read back matches for the requested date (with any existing analysis status)
+    // Read back matches for the requested date
     const startOfDay = `${dateParam}T00:00:00Z`;
     const endOfDay = `${dateParam}T23:59:59Z`;
 

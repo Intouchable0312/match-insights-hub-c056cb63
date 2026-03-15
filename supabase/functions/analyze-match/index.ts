@@ -7,20 +7,6 @@ const corsHeaders = {
 };
 
 // ====== SAFE FETCH ======
-async function safeFetch(url: string, headers: Record<string, string>, label: string, timeoutMs = 10000): Promise<any> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const res = await fetch(url, { headers, signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) { const b = await res.text(); console.error(`  ✗ ${label}: ${res.status} ${b.slice(0,150)}`); return null; }
-    const data = await res.json();
-    const c = Array.isArray(data?.response) ? data.response.length : (data?.response ? 'obj' : 0);
-    console.log(`  ✓ ${label}: ${c} results`);
-    return data;
-  } catch (err) { console.error(`  ✗ ${label}: ${err.message}`); return null; }
-}
-
 async function simpleFetch(url: string, label: string, timeoutMs = 8000): Promise<any> {
   try {
     const controller = new AbortController();
@@ -36,34 +22,33 @@ async function simpleFetch(url: string, label: string, timeoutMs = 8000): Promis
 
 // ====== LEAGUE MAPPINGS ======
 const LEAGUE_ESPN_MAP: Record<number, string> = {
-  61: 'fra.1', 39: 'eng.1', 140: 'esp.1', 135: 'ita.1', 78: 'ger.1',
-  2: 'uefa.champions', 3: 'uefa.europa', 848: 'uefa.europa.conf',
-  94: 'por.1', 88: 'ned.1', 144: 'bel.1', 203: 'tur.1', 179: 'sco.1',
-  63: 'fra.2', 40: 'eng.2', 41: 'eng.3', 42: 'eng.4',
-  141: 'esp.2', 79: 'ger.2', 136: 'ita.2',
+  4334: 'fra.1', 4328: 'eng.1', 4335: 'esp.1', 4332: 'ita.1', 4331: 'ger.1',
+  4480: 'uefa.champions', 4481: 'uefa.europa',
+  4344: 'por.1', 4337: 'ned.1', 4338: 'bel.1', 4346: 'tur.1', 4330: 'sco.1',
+  4336: 'eng.2', 4396: 'fra.2', 4347: 'usa.1', 4351: 'bra.1',
 };
 
 const LEAGUE_THESPORTSDB_MAP: Record<number, string> = {
-  61: '4334', 39: '4328', 140: '4335', 135: '4332', 78: '4331',
-  2: '4480', 3: '4481', 94: '4344', 88: '4337', 144: '4338',
+  4334: '4334', 4328: '4328', 4335: '4335', 4332: '4332', 4331: '4331',
+  4480: '4480', 4481: '4481', 4344: '4344', 4337: '4337', 4338: '4338',
+  4346: '4346', 4330: '4330', 4347: '4347', 4351: '4351', 4336: '4336', 4396: '4396',
 };
 
 // ====== FREE DATA SOURCES ======
 
-// 1. ESPN Standings (free, no key)
+// 1. ESPN Standings
 async function fetchESPNStandings(leagueId: number, season: number): Promise<string> {
   const slug = LEAGUE_ESPN_MAP[leagueId];
   if (!slug) return "";
   const data = await simpleFetch(
     `https://site.api.espn.com/apis/v2/sports/soccer/${slug}/standings?season=${season}`,
-    "ESPN-Standings"
+    "Standings"
   );
   const entries = data?.children?.[0]?.standings?.entries;
   if (!entries?.length) {
-    // Try next year
     const data2 = await simpleFetch(
       `https://site.api.espn.com/apis/v2/sports/soccer/${slug}/standings?season=${season + 1}`,
-      "ESPN-Standings-alt"
+      "Standings-alt"
     );
     const entries2 = data2?.children?.[0]?.standings?.entries;
     if (!entries2?.length) return "";
@@ -87,7 +72,7 @@ async function fetchESPNTeamResults(teamName: string, leagueId: number): Promise
   if (!slug) return "";
   const data = await simpleFetch(
     `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard`,
-    `ESPN-Scores-${teamName.slice(0,10)}`
+    `Scores-${teamName.slice(0,10)}`
   );
   if (!data?.events?.length) return "";
   const keyword = teamName.toLowerCase().split(' ')[0];
@@ -106,14 +91,13 @@ async function fetchESPNTeamResults(teamName: string, leagueId: number): Promise
   }).join("\n");
 }
 
-// 3. ESPN Team Stats & Details
+// 3. ESPN Team Stats
 async function fetchESPNTeamStats(teamName: string, leagueId: number): Promise<string> {
   const slug = LEAGUE_ESPN_MAP[leagueId];
   if (!slug) return "";
-  // Search for team in ESPN
   const data = await simpleFetch(
     `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams`,
-    `ESPN-Teams-${teamName.slice(0,10)}`
+    `Teams-${teamName.slice(0,10)}`
   );
   if (!data?.sports?.[0]?.leagues?.[0]?.teams?.length) return "";
   const keyword = teamName.toLowerCase().split(' ')[0];
@@ -135,11 +119,11 @@ async function fetchESPNTeamStats(teamName: string, leagueId: number): Promise<s
   return txt;
 }
 
-// 4. TheSportsDB - Team Info Deep
+// 4. TheSportsDB - Team Info
 async function fetchTheSportsDBTeam(teamName: string): Promise<{ info: string; id: string }> {
   const data = await simpleFetch(
     `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`,
-    `TSDB-Team-${teamName.slice(0,10)}`
+    `Team-${teamName.slice(0,10)}`
   );
   const team = data?.teams?.[0];
   if (!team) return { info: "", id: "" };
@@ -147,24 +131,22 @@ async function fetchTheSportsDBTeam(teamName: string): Promise<{ info: string; i
   Fondé: ${team.intFormedYear || '?'} | Stade: ${team.strStadium || '?'} (${team.intStadiumCapacity || '?'} places)
   Pays: ${team.strCountry || '?'} | Ligue: ${team.strLeague || '?'}
   Manager: ${team.strManager || '?'}
-  Couleurs: ${team.strTeamJersey || '?'}
-  ${team.strKeywords ? `Mots-clés: ${team.strKeywords}` : ''}`;
-  // Description courte
+  Couleurs: ${team.strTeamJersey || '?'}`;
   const desc = team.strDescriptionFR || team.strDescriptionEN || '';
   if (desc) txt += `\n  Bio: ${desc.slice(0, 300)}...`;
   return { info: txt, id: team.idTeam || "" };
 }
 
-// 5. TheSportsDB - Last 5 & Next 5 Events
+// 5. TheSportsDB - Last 5 & Next 5
 async function fetchTheSportsDBEvents(teamId: string, teamName: string): Promise<string> {
   if (!teamId) return "";
   const [lastData, nextData] = await Promise.all([
-    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${teamId}`, `TSDB-Last-${teamName.slice(0,8)}`),
-    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${teamId}`, `TSDB-Next-${teamName.slice(0,8)}`),
+    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${teamId}`, `Last-${teamName.slice(0,8)}`),
+    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${teamId}`, `Next-${teamName.slice(0,8)}`),
   ]);
   let txt = "";
   if (lastData?.results?.length) {
-    txt += `${teamName} - 5 derniers matchs (TheSportsDB):\n`;
+    txt += `${teamName} - 5 derniers matchs:\n`;
     txt += lastData.results.map((e: any) =>
       `  ${e.strHomeTeam} ${e.intHomeScore ?? '?'}-${e.intAwayScore ?? '?'} ${e.strAwayTeam} (${e.dateEvent}, ${e.strLeague})`
     ).join("\n");
@@ -180,18 +162,16 @@ async function fetchTheSportsDBEvents(teamId: string, teamName: string): Promise
 
 // 6. TheSportsDB - H2H
 async function fetchTheSportsDBH2H(homeTeam: string, awayTeam: string): Promise<string> {
-  // Try both orders
   const [d1, d2] = await Promise.all([
-    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(homeTeam)}_vs_${encodeURIComponent(awayTeam)}`, "TSDB-H2H"),
-    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(awayTeam)}_vs_${encodeURIComponent(homeTeam)}`, "TSDB-H2H-rev"),
+    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(homeTeam)}_vs_${encodeURIComponent(awayTeam)}`, "H2H"),
+    simpleFetch(`https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(awayTeam)}_vs_${encodeURIComponent(homeTeam)}`, "H2H-rev"),
   ]);
   const events = [...(d1?.event || []), ...(d2?.event || [])];
   if (!events.length) return "";
-  // Deduplicate by event ID
   const seen = new Set();
   const unique = events.filter((e: any) => { if (seen.has(e.idEvent)) return false; seen.add(e.idEvent); return true; });
   unique.sort((a: any, b: any) => (b.dateEvent || '').localeCompare(a.dateEvent || ''));
-  return "H2H (TheSportsDB):\n" + unique.slice(0, 10).map((e: any) =>
+  return "Confrontations directes:\n" + unique.slice(0, 10).map((e: any) =>
     `  ${e.strHomeTeam} ${e.intHomeScore ?? '?'}-${e.intAwayScore ?? '?'} ${e.strAwayTeam} (${e.dateEvent}, ${e.strLeague})`
   ).join("\n");
 }
@@ -202,32 +182,29 @@ async function fetchTheSportsDBTable(leagueId: number, season: string): Promise<
   if (!tsdbId) return "";
   const data = await simpleFetch(
     `https://www.thesportsdb.com/api/v1/json/3/lookuptable.php?l=${tsdbId}&s=${season}`,
-    "TSDB-Table"
+    "Table"
   );
   if (!data?.table?.length) return "";
-  return "Classement (TheSportsDB):\n" + data.table.slice(0, 20).map((t: any) =>
+  return "Classement:\n" + data.table.slice(0, 20).map((t: any) =>
     `${t.intRank}. ${t.strTeam} - ${t.intPoints}pts | ${t.intPlayed}J ${t.intWin}V ${t.intDraw}N ${t.intLoss}D | BM:${t.intGoalsFor} BE:${t.intGoalsAgainst} Diff:${t.intGoalDifference}`
   ).join("\n");
 }
 
-// 8. Weather at Match Venue (Open-Meteo, 100% free)
+// 8. Weather (Open-Meteo, 100% free)
 async function fetchMatchWeather(city: string, kickoff: string): Promise<string> {
   if (!city) return "";
-  // Step 1: Geocode city
   const geoData = await simpleFetch(
     `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=fr`,
     "Geo-" + city.slice(0, 10)
   );
   const loc = geoData?.results?.[0];
   if (!loc) return "";
-  // Step 2: Get weather
   const matchDate = kickoff.split('T')[0];
   const weatherData = await simpleFetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,weather_code&timezone=auto&start_date=${matchDate}&end_date=${matchDate}`,
     "Weather"
   );
   if (!weatherData?.hourly) return "";
-  // Find closest hour to kickoff
   const kickoffHour = new Date(kickoff).getHours();
   const idx = Math.min(kickoffHour, (weatherData.hourly.time?.length || 1) - 1);
   const temp = weatherData.hourly.temperature_2m?.[idx];
@@ -255,7 +232,7 @@ async function fetchLeagueStats(leagueId: number): Promise<string> {
   if (!slug) return "";
   const data = await simpleFetch(
     `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard`,
-    "ESPN-LeagueScores"
+    "LeagueScores"
   );
   if (!data?.events?.length) return "";
   const completed = data.events.filter((e: any) => e.status?.type?.completed);
@@ -314,7 +291,6 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-    const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase not configured");
@@ -336,32 +312,8 @@ serve(async (req) => {
     const currentSeason = matchDate.getMonth() >= 7 ? matchDate.getFullYear() : matchDate.getFullYear() - 1;
     const seasonStr = `${currentSeason}-${currentSeason + 1}`;
 
-    // ══════════ PHASE 1: API-Football ══════════
-    let h2hData = null, standingsData = null, oddsData = null;
-    let injuriesHomeData = null, injuriesAwayData = null;
-    let lastHomeData = null, lastAwayData = null;
-    let predictionsData = null, homeStatsData = null, awayStatsData = null;
-
-    if (RAPIDAPI_KEY) {
-      console.log(`\n📡 PHASE 1: API-Football (saison ${currentSeason})...`);
-      const hdr = { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" };
-      const B = "https://v3.football.api-sports.io";
-      [h2hData, standingsData, oddsData, injuriesHomeData, injuriesAwayData, lastHomeData, lastAwayData, predictionsData, homeStatsData, awayStatsData] = await Promise.all([
-        safeFetch(`${B}/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, hdr, "H2H"),
-        safeFetch(`${B}/standings?league=${match.league_id}&season=${currentSeason}`, hdr, "Standings"),
-        safeFetch(`${B}/odds?fixture=${match.api_fixture_id}`, hdr, "Odds"),
-        safeFetch(`${B}/injuries?league=${match.league_id}&season=${currentSeason}&team=${match.home_team_id}`, hdr, "Inj-Home"),
-        safeFetch(`${B}/injuries?league=${match.league_id}&season=${currentSeason}&team=${match.away_team_id}`, hdr, "Inj-Away"),
-        safeFetch(`${B}/fixtures?team=${match.home_team_id}&season=${currentSeason}&last=10`, hdr, "Last-Home"),
-        safeFetch(`${B}/fixtures?team=${match.away_team_id}&season=${currentSeason}&last=10`, hdr, "Last-Away"),
-        safeFetch(`${B}/predictions?fixture=${match.api_fixture_id}`, hdr, "Predictions"),
-        safeFetch(`${B}/teams/statistics?team=${match.home_team_id}&league=${match.league_id}&season=${currentSeason}`, hdr, "Stats-Home"),
-        safeFetch(`${B}/teams/statistics?team=${match.away_team_id}&league=${match.league_id}&season=${currentSeason}`, hdr, "Stats-Away"),
-      ]);
-    }
-
-    // ══════════ PHASE 2: FREE SCRAPING (parallel) ══════════
-    console.log(`\n🆓 PHASE 2: Free scraping...`);
+    // ══════════ ALL FREE DATA (parallel) ══════════
+    console.log(`\n🆓 Fetching free data sources...`);
 
     const [
       espnStandings,
@@ -371,25 +323,17 @@ serve(async (req) => {
       espnHomeStats, espnAwayStats,
       espnHomeResults, espnAwayResults,
     ] = await Promise.all([
-      // ESPN standings (fallback)
-      !standingsData?.response?.[0]?.league?.standings ? fetchESPNStandings(match.league_id, currentSeason) : Promise.resolve(""),
-      // TheSportsDB team info
+      fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
       fetchTheSportsDBTeam(match.away_team_name),
-      // TheSportsDB H2H (fallback)
-      !h2hData?.response?.length ? fetchTheSportsDBH2H(match.home_team_name, match.away_team_name) : Promise.resolve(""),
-      // TheSportsDB league table (extra source)
+      fetchTheSportsDBH2H(match.home_team_name, match.away_team_name),
       fetchTheSportsDBTable(match.league_id, seasonStr),
-      // Weather
       fetchMatchWeather(match.venue_city || match.league_country, match.kickoff),
-      // League averages
       fetchLeagueStats(match.league_id),
-      // ESPN team details
       fetchESPNTeamStats(match.home_team_name, match.league_id),
       fetchESPNTeamStats(match.away_team_name, match.league_id),
-      // ESPN recent results (fallback)
-      !lastHomeData?.response?.length ? fetchESPNTeamResults(match.home_team_name, match.league_id) : Promise.resolve(""),
-      !lastAwayData?.response?.length ? fetchESPNTeamResults(match.away_team_name, match.league_id) : Promise.resolve(""),
+      fetchESPNTeamResults(match.home_team_name, match.league_id),
+      fetchESPNTeamResults(match.away_team_name, match.league_id),
     ]);
 
     // TheSportsDB last/next events
@@ -398,145 +342,55 @@ serve(async (req) => {
       fetchTheSportsDBEvents(awayTeamTSDB.id, match.away_team_name),
     ]);
 
-    // ══════════ FORMAT ALL DATA ══════════
+    // ══════════ FORMAT DATA ══════════
     console.log(`\n📝 Formatting data...`);
 
     // Standings
-    let standingsTxt = "";
-    if (standingsData?.response?.[0]?.league?.standings) {
-      const all = standingsData.response[0].league.standings;
-      const flat = Array.isArray(all[0]) ? all.flat() : all;
-      const fmt = (t: any, n: string) => t
-        ? `${n}: ${t.rank}e/${flat.length} - ${t.points}pts | ${t.all.played}J ${t.all.win}V ${t.all.draw}N ${t.all.lose}D | BM:${t.all.goals.for} BE:${t.all.goals.against} Diff:${t.goalsDiff}\n  Dom: ${t.home.win}V ${t.home.draw}N ${t.home.lose}D | Ext: ${t.away.win}V ${t.away.draw}N ${t.away.lose}D | Forme: ${t.form || '?'}`
-        : `${n}: Non classé`;
-      standingsTxt = `${fmt(flat.find((s: any) => s.team.id === match.home_team_id), match.home_team_name)}\n${fmt(flat.find((s: any) => s.team.id === match.away_team_id), match.away_team_name)}`;
-    } else if (espnStandings) {
-      standingsTxt = espnStandings;
-    }
-    if (tsdbTable) standingsTxt += `\n\n${tsdbTable}`;
+    let standingsTxt = espnStandings || "";
+    if (tsdbTable) standingsTxt += standingsTxt ? `\n\n${tsdbTable}` : tsdbTable;
     if (!standingsTxt) standingsTxt = "Classement non disponible";
 
     // Recent form
     let recentFormTxt = "";
-    const fmtForm = (data: any, teamId: number, teamName: string) => {
-      const fix = data.response.slice(0, 15);
-      let streak = { type: '', count: 0 }, cs = 0, fts = 0, gf = 0, ga = 0;
-      const res = fix.map((f: any, i: number) => {
-        const isH = f.teams.home.id === teamId;
-        const g1 = isH ? (f.goals.home ?? 0) : (f.goals.away ?? 0);
-        const g2 = isH ? (f.goals.away ?? 0) : (f.goals.home ?? 0);
-        const r = g1 > g2 ? 'V' : g1 < g2 ? 'D' : 'N';
-        gf += g1; ga += g2; if (g2 === 0) cs++; if (g1 === 0) fts++;
-        if (i === 0) streak = { type: r, count: 1 }; else if (r === streak.type && streak.count === i) streak.count++;
-        return `  ${r} ${g1}-${g2} vs ${isH ? f.teams.away.name : f.teams.home.name} (${isH ? 'Dom' : 'Ext'}, ${f.fixture.date?.split("T")[0]})`;
-      });
-      const w = res.filter((r: string) => r.trim().startsWith('V')).length;
-      const d = res.filter((r: string) => r.trim().startsWith('N')).length;
-      const l = res.filter((r: string) => r.trim().startsWith('D')).length;
-      return `${teamName} — ${fix.length} derniers: ${w}V ${d}N ${l}D\n  🔥 Série: ${streak.count} ${streak.type === 'V' ? 'victoires' : streak.type === 'D' ? 'défaites' : 'nuls'}\n  Moy: ${(gf/fix.length).toFixed(1)} BM / ${(ga/fix.length).toFixed(1)} BE | CS: ${cs} | Muet: ${fts}\n${res.join("\n")}`;
-    };
-    if (lastHomeData?.response?.length && lastAwayData?.response?.length) {
-      recentFormTxt = `${fmtForm(lastHomeData, match.home_team_id, match.home_team_name)}\n\n${fmtForm(lastAwayData, match.away_team_id, match.away_team_name)}`;
-    } else {
-      if (espnHomeResults) recentFormTxt += `${match.home_team_name} (ESPN):\n${espnHomeResults}`;
-      if (espnAwayResults) recentFormTxt += `\n${match.away_team_name} (ESPN):\n${espnAwayResults}`;
-    }
+    if (espnHomeResults) recentFormTxt += `${match.home_team_name}:\n${espnHomeResults}`;
+    if (espnAwayResults) recentFormTxt += `\n${match.away_team_name}:\n${espnAwayResults}`;
     if (homeEventsTxt) recentFormTxt += `\n\n${homeEventsTxt}`;
     if (awayEventsTxt) recentFormTxt += `\n\n${awayEventsTxt}`;
     if (!recentFormTxt) recentFormTxt = "Forme récente non disponible";
 
     // H2H
-    let h2hTxt = "";
-    if (h2hData?.response?.length) {
-      let hw = 0, dr = 0, aw = 0;
-      h2hTxt = h2hData.response.map((f: any) => {
-        const hg = f.goals.home ?? 0, ag = f.goals.away ?? 0;
-        if (f.teams.home.id === match.home_team_id) { if (hg > ag) hw++; else if (hg === ag) dr++; else aw++; }
-        else { if (ag > hg) hw++; else if (hg === ag) dr++; else aw++; }
-        return `  ${f.teams.home.name} ${hg}-${ag} ${f.teams.away.name} (${f.fixture.date?.split("T")[0]})`;
-      }).join("\n");
-      h2hTxt = `Bilan: ${hw}V ${dr}N ${aw}D pour ${match.home_team_name}\n${h2hTxt}`;
-    } else if (tsdbH2H) { h2hTxt = tsdbH2H; }
-    if (!h2hTxt) h2hTxt = "H2H non disponible";
-
-    // Injuries
-    const fmtInj = (d: any, n: string) => !d?.response?.length ? `${n}: Aucune blessure connue` :
-      `${n} (${d.response.length}):\n` + d.response.slice(0, 15).map((i: any) => `  - ${i.player?.name || '?'}: ${i.player?.reason || '?'} (${i.player?.type || '?'})`).join("\n");
-    const injuriesTxt = `${fmtInj(injuriesHomeData, match.home_team_name)}\n${fmtInj(injuriesAwayData, match.away_team_name)}`;
-
-    // Odds
-    const oddsTxt = (() => {
-      const bk = oddsData?.response?.[0]?.bookmakers;
-      if (!bk?.length) return "Cotes non disponibles";
-      return bk.slice(0, 3).map((b: any) => {
-        const mw = b.bets?.find((x: any) => x.name === "Match Winner");
-        const bt = b.bets?.find((x: any) => x.name === "Both Teams Score");
-        const ou = b.bets?.find((x: any) => x.name === "Goals Over/Under");
-        const dc = b.bets?.find((x: any) => x.name === "Double Chance");
-        let l = `${b.name}: `;
-        if (mw) l += `1X2: ${mw.values.map((v: any) => `${v.value}=${v.odd}`).join("|")}`;
-        if (bt) l += ` BTTS: ${bt.values.map((v: any) => `${v.value}=${v.odd}`).join("/")}`;
-        if (ou) l += ` O/U: ${ou.values.map((v: any) => `${v.value}=${v.odd}`).join("/")}`;
-        if (dc) l += ` DC: ${dc.values.map((v: any) => `${v.value}=${v.odd}`).join("/")}`;
-        return l;
-      }).join("\n");
-    })();
-
-    // Predictions
-    const predTxt = (() => {
-      const p = predictionsData?.response?.[0];
-      if (!p) return "Non disponible";
-      const pr = p.predictions, c = p.comparison;
-      let t = `Conseil: ${pr?.advice || '?'} | Vainqueur: ${pr?.winner?.name || '?'} (${pr?.winner?.comment || ''}) | Score: ${pr?.goals?.home ?? '?'}-${pr?.goals?.away ?? '?'}`;
-      if (c) t += `\nForme ${c.form?.home}%-${c.form?.away}% | Att ${c.att?.home}%-${c.att?.away}% | Déf ${c.def?.home}%-${c.def?.away}% | Total ${c.total?.home}%-${c.total?.away}%`;
-      return t;
-    })();
-
-    // Team stats
-    const fmtStats = (d: any, n: string) => {
-      const r = d?.response; if (!r) return `${n}: Non dispo`;
-      const g = r.goals, f = r.fixtures;
-      let t = `${n}: ${f?.played?.total ?? '?'}J ${f?.wins?.total ?? '?'}V ${f?.draws?.total ?? '?'}N ${f?.loses?.total ?? '?'}D | BM:${g?.for?.total?.total ?? '?'} (${g?.for?.average?.total ?? '?'}/m) BE:${g?.against?.total?.total ?? '?'} (${g?.against?.average?.total ?? '?'}/m)`;
-      if (r.lineups?.length) t += ` | Formation: ${r.lineups[0].formation}`;
-      if (r.clean_sheet) t += ` | CS:${r.clean_sheet.total}`;
-      if (r.biggest?.streak) t += ` | MaxV:${r.biggest.streak.wins} MaxD:${r.biggest.streak.loses}`;
-      return t;
-    };
-    const statsTxt = `${fmtStats(homeStatsData, match.home_team_name)}\n${fmtStats(awayStatsData, match.away_team_name)}`;
+    const h2hTxt = tsdbH2H || "H2H non disponible";
 
     // Team info
     const teamInfoTxt = [homeTeamTSDB.info, awayTeamTSDB.info, espnHomeStats, espnAwayStats].filter(Boolean).join("\n\n") || "Non disponible";
 
     // Count sources
-    let srcCount = 1; const srcs: string[] = ["match"];
-    const addSrc = (ok: boolean, n: string) => { if (ok) { srcCount++; srcs.push(n); } };
-    addSrc(!standingsTxt.includes("non disponible"), "standings");
-    addSrc(!!recentFormTxt && !recentFormTxt.includes("non disponible"), "form");
-    addSrc(!h2hTxt.includes("non disponible"), "h2h");
-    addSrc(!!(injuriesHomeData?.response?.length || injuriesAwayData?.response?.length), "injuries");
-    addSrc(!!oddsData?.response?.length, "odds");
-    addSrc(!!predictionsData?.response?.length, "predictions");
-    addSrc(!!(homeStatsData?.response || awayStatsData?.response), "team_stats");
-    addSrc(!!(homeTeamTSDB.info || awayTeamTSDB.info), "team_info");
-    addSrc(!!weatherTxt, "weather");
-    addSrc(!!leagueStatsTxt, "league_avg");
-    addSrc(!!(homeEventsTxt || awayEventsTxt), "calendar");
-    addSrc(!!(espnHomeStats || espnAwayStats), "espn_stats");
+    let srcCount = 1;
+    const check = (ok: boolean) => { if (ok) srcCount++; };
+    check(!standingsTxt.includes("non disponible"));
+    check(!!recentFormTxt && !recentFormTxt.includes("non disponible"));
+    check(!h2hTxt.includes("non disponible"));
+    check(!!(homeTeamTSDB.info || awayTeamTSDB.info));
+    check(!!weatherTxt);
+    check(!!leagueStatsTxt);
+    check(!!(homeEventsTxt || awayEventsTxt));
+    check(!!(espnHomeStats || espnAwayStats));
 
-    console.log(`\n📊 Sources: ${srcCount} [${srcs.join(", ")}]`);
+    console.log(`\n📊 ${srcCount} data sources collected`);
 
     // ══════════ AI PROMPT ══════════
     const systemPrompt = `Tu es un analyste football d'élite. Données RÉELLES saison ${currentSeason}/${currentSeason + 1}.
 
-RÈGLES:
+RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 25%, Stats 20%, Blessures 20%, Classement 15%, H2H 10%, Météo/Dom 5%, Cotes 5%
+3. Pondération: Forme 25%, Stats 20%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 10%
 4. Séries victoires/défaites = facteur MAJEUR
 5. Paris: recommande UNIQUEMENT probabilité > 55%, justifie avec données
 6. Prends en compte la météo si disponible (pluie → moins de buts, vent → jeu perturbé)
 7. Prends en compte le calendrier (congestion de matchs = fatigue)
-8. Français`;
+8. Réponds en français
+9. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${match.home_team_name} vs ${match.away_team_name}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
@@ -545,23 +399,11 @@ ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
 ══ CLASSEMENT SAISON ${currentSeason}/${currentSeason + 1} ══
 ${standingsTxt}
 
-══ STATISTIQUES SAISON ══
-${statsTxt}
-
 ══ FORME RÉCENTE & SÉRIES ══
 ${recentFormTxt}
 
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
-
-══ BLESSURES & SUSPENSIONS ══
-${injuriesTxt}
-
-══ COTES BOOKMAKERS ══
-${oddsTxt}
-
-══ PRÉDICTIONS API-FOOTBALL ══
-${predTxt}
 
 ══ MÉTÉO AU STADE ══
 ${weatherTxt || "Non disponible"}
@@ -572,9 +414,8 @@ ${leagueStatsTxt || "Non disponible"}
 ══ INFOS ÉQUIPES (stade, coach, histoire) ══
 ${teamInfoTxt}
 
-📡 ${srcCount} sources: [${srcs.join(", ")}]
-
-⚠️ RAPPEL: Probabilités en 0-100. home+draw+away=100. Analyse TOUT et fournis les paris les plus sécurisés.`;
+⚠️ RAPPEL: Probabilités en 0-100. home+draw+away=100. Analyse TOUT et fournis les paris les plus sécurisés.
+⚠️ data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE/API/SITE. Parle uniquement de "données disponibles".`;
 
     console.log("🤖 Calling AI...");
 
@@ -654,7 +495,7 @@ ${teamInfoTxt}
     }
 
     result.prediction = normalizePrediction(result.prediction);
-    const quality = Math.min(100, Math.round((srcCount / 12) * 100));
+    const quality = Math.min(100, Math.round((srcCount / 9) * 100));
     const uncertainty = Math.round(Math.max(0, 100 - (result.prediction?.confidence ?? 50)));
 
     console.log(`✅ ${result.prediction.home_win_prob}%/${result.prediction.draw_prob}%/${result.prediction.away_win_prob}% | ${result.report?.suggested_bets?.length || 0} paris | ${srcCount} sources`);
