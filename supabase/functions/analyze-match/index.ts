@@ -466,8 +466,14 @@ Analyse TOUTES ces données et fournis ton analyse + paris sécurisés.`;
       throw new Error("Failed to parse AI response");
     }
 
+    // Sanitize prediction values - ensure integers where needed
+    if (analysisResult.prediction) {
+      analysisResult.prediction.predicted_score_home = Math.round(analysisResult.prediction.predicted_score_home ?? 0);
+      analysisResult.prediction.predicted_score_away = Math.round(analysisResult.prediction.predicted_score_away ?? 0);
+    }
+
     const dataQualityScore = Math.min(100, Math.round((sourceCount / 14) * 100));
-    const uncertaintyScore = Math.max(0, 100 - analysisResult.prediction.confidence);
+    const uncertaintyScore = Math.round(Math.max(0, 100 - (analysisResult.prediction?.confidence ?? 50)));
 
     const { error: updateError } = await supabase.from("analyses").update({
       status: "completed",
