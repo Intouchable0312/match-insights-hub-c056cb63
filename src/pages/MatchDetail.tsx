@@ -26,7 +26,7 @@ export default function MatchDetail() {
   const [analysis, setAnalysis] = useState<FullAnalysis | null>(
     match?.analysisStatus === 'completed' ? { ...MOCK_FULL_ANALYSIS, matchId: match.id } : null
   );
-  const [steps, setSteps] = useState(ANALYSIS_STEPS.map(l => ({ label: l, status: 'pending' as const })));
+  const [steps, setSteps] = useState<{ label: string; status: 'pending' | 'active' | 'done' | 'error' }[]>(ANALYSIS_STEPS.map(l => ({ label: l, status: 'pending' as const })));
   const [progress, setProgress] = useState(0);
   const [analysisMode, setAnalysisMode] = useState<'quick' | 'full'>('full');
 
