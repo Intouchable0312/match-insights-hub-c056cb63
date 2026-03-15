@@ -271,6 +271,121 @@ async function fetchLeagueStats(leagueId: number): Promise<string> {
   Over 1.5: ${Math.round(over15Count / completed.length * 100)}%`;
 }
 
+// 10. ESPN Injuries (FREE, UNLIMITED)
+async function fetchESPNInjuries(teamId: number, teamName: string, leagueId: number): Promise<string> {
+  const slug = LEAGUE_ESPN_MAP[leagueId];
+  if (!slug) return "";
+  
+  // First find ESPN team ID from teams list
+  const teamsData = await simpleFetch(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams`,
+    `InjTeams-${teamName.slice(0,8)}`
+  );
+  const teams = teamsData?.sports?.[0]?.leagues?.[0]?.teams || [];
+  const keyword = teamName.toLowerCase().split(' ')[0];
+  const teamEntry = teams.find((t: any) =>
+    t.team?.displayName?.toLowerCase().includes(keyword) ||
+    t.team?.shortDisplayName?.toLowerCase().includes(keyword) ||
+    t.team?.name?.toLowerCase().includes(keyword)
+  );
+  if (!teamEntry?.team?.id) return "";
+  
+  const espnTeamId = teamEntry.team.id;
+  
+  // Try roster endpoint which includes injury info
+  const rosterData = await simpleFetch(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams/${espnTeamId}/roster`,
+    `Roster-${teamName.slice(0,8)}`
+  );
+  
+  if (!rosterData?.athletes?.length && !rosterData?.entries?.length) {
+    // Try alternative injuries endpoint
+    const injData = await simpleFetch(
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams/${espnTeamId}?enable=roster,injuries`,
+      `Inj-${teamName.slice(0,8)}`
+    );
+    const injuries = injData?.team?.injuries || [];
+    if (!injuries.length) return "";
+    return `${teamName} - Blessures/Absences:\n` + injuries.map((inj: any) => {
+      const player = inj.athlete?.displayName || "Inconnu";
+      const status = inj.status || "?";
+      const details = inj.details?.detail || inj.type || "";
+      return `  ❌ ${player} — ${status}${details ? ` (${details})` : ''}`;
+    }).join("\n");
+  }
+  
+  // Parse roster for injured players
+  const allPlayers = (rosterData?.athletes || rosterData?.entries || []).flatMap((group: any) => 
+    group.items || group.athletes || (Array.isArray(group) ? group : [group])
+  );
+  
+  const injured = allPlayers.filter((p: any) => {
+    const status = (p.status?.type || p.injuries?.[0]?.status || '').toLowerCase();
+    return status === 'out' || status === 'doubtful' || status === 'questionable' || 
+           status === 'injured' || status === 'suspended' || status === 'day-to-day';
+  });
+  
+  if (!injured.length) return "";
+  
+  return `${teamName} - Blessures/Absences:\n` + injured.map((p: any) => {
+    const name = p.displayName || p.athlete?.displayName || p.fullName || "?";
+    const pos = p.position?.abbreviation || p.position?.name || "";
+    const status = p.status?.type || p.injuries?.[0]?.status || "?";
+    const detail = p.injuries?.[0]?.details?.detail || p.injuries?.[0]?.type || "";
+    return `  ❌ ${name} (${pos}) — ${status}${detail ? `: ${detail}` : ''}`;
+  }).join("\n");
+}
+
+// 11. ESPN Team Schedule (past results for form)
+async function fetchESPNSchedule(teamId: number, teamName: string, leagueId: number): Promise<string> {
+  const slug = LEAGUE_ESPN_MAP[leagueId];
+  if (!slug) return "";
+  
+  const teamsData = await simpleFetch(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams`,
+    `SchedTeams-${teamName.slice(0,8)}`
+  );
+  const teams = teamsData?.sports?.[0]?.leagues?.[0]?.teams || [];
+  const keyword = teamName.toLowerCase().split(' ')[0];
+  const teamEntry = teams.find((t: any) =>
+    t.team?.displayName?.toLowerCase().includes(keyword) ||
+    t.team?.shortDisplayName?.toLowerCase().includes(keyword)
+  );
+  if (!teamEntry?.team?.id) return "";
+  
+  const espnTeamId = teamEntry.team.id;
+  const schedData = await simpleFetch(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams/${espnTeamId}/schedule`,
+    `Sched-${teamName.slice(0,8)}`
+  );
+  
+  if (!schedData?.events?.length) return "";
+  
+  // Get last 10 completed matches
+  const completed = schedData.events
+    .filter((e: any) => e.competitions?.[0]?.status?.type?.completed)
+    .slice(-10);
+  
+  if (!completed.length) return "";
+  
+  let wins = 0, draws = 0, losses = 0;
+  const lines = completed.map((e: any) => {
+    const comp = e.competitions[0];
+    const home = comp.competitors?.find((c: any) => c.homeAway === 'home');
+    const away = comp.competitors?.find((c: any) => c.homeAway === 'away');
+    const hs = parseInt(home?.score || '0'), as_ = parseInt(away?.score || '0');
+    const isHome = home?.team?.displayName?.toLowerCase().includes(keyword);
+    if (isHome) {
+      if (hs > as_) wins++; else if (hs === as_) draws++; else losses++;
+    } else {
+      if (as_ > hs) wins++; else if (hs === as_) draws++; else losses++;
+    }
+    return `  ${home?.team?.abbreviation || '?'} ${hs}-${as_} ${away?.team?.abbreviation || '?'} (${e.date?.split('T')[0]})`;
+  });
+  
+  return `${teamName} — 10 derniers matchs (${wins}V ${draws}N ${losses}D):\n${lines.join("\n")}`;
+}
+
 // 10. football-data.co.uk CSV — detailed match stats for the full season (tirs, corners, cartons, cotes)
 async function fetchTextContent(url: string, label: string, timeoutMs = 10000): Promise<string> {
   try {
