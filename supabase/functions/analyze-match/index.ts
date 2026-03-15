@@ -486,6 +486,7 @@ serve(async (req) => {
       weatherTxt, leagueStatsTxt,
       espnHomeStats, espnAwayStats,
       espnHomeResults, espnAwayResults,
+      fdukStats,
     ] = await Promise.all([
       fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
@@ -498,6 +499,7 @@ serve(async (req) => {
       fetchESPNTeamStats(match.away_team_name, match.league_id),
       fetchESPNTeamResults(match.home_team_name, match.league_id),
       fetchESPNTeamResults(match.away_team_name, match.league_id),
+      fetchFootballDataUK(match.league_id, currentSeason, match.home_team_name, match.away_team_name),
     ]);
 
     // TheSportsDB last/next events
