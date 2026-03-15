@@ -72,17 +72,22 @@ serve(async (req) => {
     let lastAwayData = null;
 
     try {
-      // Fetch fixture statistics if match has started/finished
+      // Calculate current football season (Aug-Jul cycle)
+      const matchDate = new Date(match.kickoff);
+      const year = matchDate.getFullYear();
+      const month = matchDate.getMonth(); // 0-indexed
+      const currentSeason = month >= 7 ? year : year - 1; // Aug+ = current year, Jan-Jul = previous year
+
       const apiHeaders = { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": "v3.football.api-sports.io" };
       const [statsRes, h2hRes, standingsRes, oddsRes, injuriesHomeRes, injuriesAwayRes, lastHomeRes, lastAwayRes] = await Promise.allSettled([
         fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${match.home_team_id}-${match.away_team_id}&last=10`, { headers: apiHeaders }),
-        fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=2024`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/standings?league=${match.league_id}&season=${currentSeason}`, { headers: apiHeaders }),
         fetch(`https://v3.football.api-sports.io/odds?fixture=${match.api_fixture_id}`, { headers: apiHeaders }),
-        fetch(`https://v3.football.api-sports.io/injuries?team=${match.home_team_id}&season=2024`, { headers: apiHeaders }),
-        fetch(`https://v3.football.api-sports.io/injuries?team=${match.away_team_id}&season=2024`, { headers: apiHeaders }),
-        fetch(`https://v3.football.api-sports.io/fixtures?team=${match.home_team_id}&last=10&status=FT-AET-PEN`, { headers: apiHeaders }),
-        fetch(`https://v3.football.api-sports.io/fixtures?team=${match.away_team_id}&last=10&status=FT-AET-PEN`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/injuries?team=${match.home_team_id}&season=${currentSeason}`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/injuries?team=${match.away_team_id}&season=${currentSeason}`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${match.home_team_id}&last=10`, { headers: apiHeaders }),
+        fetch(`https://v3.football.api-sports.io/fixtures?team=${match.away_team_id}&last=10`, { headers: apiHeaders }),
       ]);
 
       if (statsRes.status === "fulfilled" && statsRes.value.ok) {
