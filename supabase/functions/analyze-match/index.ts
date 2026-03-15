@@ -149,6 +149,23 @@ serve(async (req) => {
       }
     })();
 
+    const formatInjuries = (data: any, teamName: string) => {
+      try {
+        if (!data?.response?.length) return `${teamName}: Aucune blessure/suspension connue`;
+        const injuries = data.response.slice(0, 15).map((inj: any) => {
+          const player = inj.player?.name || "Joueur inconnu";
+          const type = inj.player?.type || "Inconnu"; // "Missing Fixture" / "Questionable" / etc.
+          const reason = inj.player?.reason || "Raison inconnue";
+          return `  - ${player}: ${reason} (${type})`;
+        });
+        return `${teamName} (${data.response.length} joueurs):\n${injuries.join("\n")}`;
+      } catch {
+        return `${teamName}: Données indisponibles`;
+      }
+    };
+
+    const injuriesSummary = `${formatInjuries(injuriesHomeData, match.home_team_name)}\n\n${formatInjuries(injuriesAwayData, match.away_team_name)}`;
+
     const systemPrompt = `Tu es un expert en analyse de football et en statistiques sportives avancées. Tu analyses des matchs de football en utilisant toutes les données disponibles pour fournir des prédictions probabilistes précises et honnêtes.
 
 RÈGLES STRICTES:
@@ -156,6 +173,7 @@ RÈGLES STRICTES:
 - Tu ne dois JAMAIS inventer de données - utilise uniquement les données fournies
 - Si des données manquent, indique-le clairement et ajuste ton niveau de confiance
 - Sois honnête sur les limites de ton analyse
+- Les blessures et suspensions doivent fortement influencer ton analyse
 - Fournis une analyse structurée et détaillée en français`;
 
     const userPrompt = `Analyse ce match de football et fournis une prédiction détaillée.
@@ -173,12 +191,15 @@ ${standingsSummary}
 CONFRONTATIONS DIRECTES (10 dernières):
 ${h2hSummary}
 
+BLESSURES & SUSPENSIONS:
+${injuriesSummary}
+
 COTES DES BOOKMAKERS:
 ${oddsSummary}
 
 SOURCES DE DONNÉES DISPONIBLES: ${sourceCount}
 
-Basé sur TOUTES les données ci-dessus, fournis ton analyse.`;
+Basé sur TOUTES les données ci-dessus (y compris les absences de joueurs), fournis ton analyse.`;
 
     // 5. Call Lovable AI with tool calling for structured output
     console.log("Calling Lovable AI for analysis...");
