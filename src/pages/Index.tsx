@@ -19,6 +19,12 @@ const Index = () => {
   const [analyzedOnly, setAnalyzedOnly] = useState(false);
   const [selectedLeagues, setSelectedLeagues] = useState<number[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+  }, [isDark]);
 
   const dateStr = format(date, 'yyyy-MM-dd');
   const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
