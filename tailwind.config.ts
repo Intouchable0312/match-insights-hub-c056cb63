@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Nunito', 'system-ui', 'sans-serif'],
+        body: ['"DM Sans"', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -79,8 +79,11 @@ export default {
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
+        "3xl": "calc(var(--radius) + 16px)",
       },
       keyframes: {
         "accordion-down": {
