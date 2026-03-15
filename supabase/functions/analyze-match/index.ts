@@ -667,7 +667,7 @@ ${teamInfoTxt}
     }
 
     result.prediction = normalizePrediction(result.prediction);
-    const quality = Math.min(100, Math.round((srcCount / 9) * 100));
+    const quality = Math.min(100, Math.round((srcCount / 10) * 100));
     const uncertainty = Math.round(Math.max(0, 100 - (result.prediction?.confidence ?? 50)));
 
     console.log(`✅ ${result.prediction.home_win_prob}%/${result.prediction.draw_prob}%/${result.prediction.away_win_prob}% | ${result.report?.suggested_bets?.length || 0} paris | ${srcCount} sources`);
