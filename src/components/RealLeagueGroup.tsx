@@ -16,22 +16,25 @@ export function RealLeagueGroup({ leagueName, leagueLogo, leagueFlag, leagueCoun
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 w-full group py-1"
+        className="flex items-center gap-3 w-full group px-1"
       >
-        {leagueLogo ? (
-          <img src={leagueLogo} alt="" className="h-5 w-5 object-contain" />
-        ) : leagueFlag ? (
-          <img src={leagueFlag} alt="" className="h-4 w-auto" />
-        ) : (
-          <span className="text-lg">⚽</span>
-        )}
-        <h3 className="font-display font-semibold text-sm text-foreground">{leagueName}</h3>
-        <span className="text-xs text-muted-foreground">· {leagueCountry}</span>
-        <span className="text-xs text-muted-foreground ml-auto">{matches.length} match{matches.length > 1 ? 's' : ''}</span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
+        <div className="h-8 w-8 rounded-xl bg-surface flex items-center justify-center overflow-hidden shrink-0">
+          {leagueLogo ? (
+            <img src={leagueLogo} alt="" className="h-5 w-5 object-contain" />
+          ) : leagueFlag ? (
+            <img src={leagueFlag} alt="" className="h-4 w-auto" />
+          ) : (
+            <span className="text-sm">⚽</span>
+          )}
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-display font-bold text-sm">{leagueName}</h3>
+          <p className="text-xs text-muted-foreground">{leagueCountry} · {matches.length} match{matches.length > 1 ? 's' : ''}</p>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
       </button>
       <AnimatePresence>
         {isOpen && (
