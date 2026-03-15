@@ -20,34 +20,34 @@ async function simpleFetch(url: string, label: string, timeoutMs = 8000): Promis
   } catch (err) { console.error(`  ✗ ${label}: ${err.message}`); return null; }
 }
 
-// ====== LEAGUE MAPPINGS ======
+// ====== LEAGUE MAPPINGS (API-Football IDs used by ESPN fetch) ======
 const LEAGUE_ESPN_MAP: Record<number, string> = {
-  4334: 'fra.1', 4328: 'eng.1', 4335: 'esp.1', 4332: 'ita.1', 4331: 'ger.1',
-  4480: 'uefa.champions', 4481: 'uefa.europa',
-  4344: 'por.1', 4337: 'ned.1', 4338: 'bel.1', 4346: 'tur.1', 4330: 'sco.1',
-  4336: 'eng.2', 4396: 'fra.2', 4347: 'usa.1', 4351: 'bra.1',
+  61: 'fra.1', 39: 'eng.1', 140: 'esp.1', 135: 'ita.1', 78: 'ger.1',
+  2: 'uefa.champions', 3: 'uefa.europa',
+  94: 'por.1', 88: 'ned.1', 144: 'bel.1', 203: 'tur.1', 179: 'sco.1',
+  40: 'eng.2', 63: 'fra.2', 253: 'usa.1', 71: 'bra.1',
 };
 
 const LEAGUE_THESPORTSDB_MAP: Record<number, string> = {
-  4334: '4334', 4328: '4328', 4335: '4335', 4332: '4332', 4331: '4331',
-  4480: '4480', 4481: '4481', 4344: '4344', 4337: '4337', 4338: '4338',
-  4346: '4346', 4330: '4330', 4347: '4347', 4351: '4351', 4336: '4336', 4396: '4396',
+  61: '4334', 39: '4328', 140: '4335', 135: '4332', 78: '4331',
+  2: '4480', 3: '4481', 94: '4344', 88: '4337', 144: '4338',
+  203: '4346', 179: '4330', 253: '4347', 71: '4351', 40: '4336', 63: '4396',
 };
 
 // football-data.co.uk CSV file codes (free, unlimited, detailed stats)
 const LEAGUE_FDUK_MAP: Record<number, { div: string; path: string }> = {
-  4334: { div: 'F1', path: 'F1' },   // Ligue 1
-  4396: { div: 'F2', path: 'F2' },   // Ligue 2
-  4328: { div: 'E0', path: 'E0' },   // Premier League
-  4336: { div: 'E1', path: 'E1' },   // Championship
-  4335: { div: 'SP1', path: 'SP1' }, // La Liga
-  4332: { div: 'I1', path: 'I1' },   // Serie A
-  4331: { div: 'D1', path: 'D1' },   // Bundesliga
-  4337: { div: 'N1', path: 'N1' },   // Eredivisie
-  4344: { div: 'P1', path: 'P1' },   // Primeira Liga
-  4338: { div: 'B1', path: 'B1' },   // Belgian Pro League
-  4346: { div: 'T1', path: 'T1' },   // Super Lig
-  4330: { div: 'SC0', path: 'SC0' }, // Scottish Premiership
+  61: { div: 'F1', path: 'F1' },    // Ligue 1
+  63: { div: 'F2', path: 'F2' },    // Ligue 2
+  39: { div: 'E0', path: 'E0' },    // Premier League
+  40: { div: 'E1', path: 'E1' },    // Championship
+  140: { div: 'SP1', path: 'SP1' }, // La Liga
+  135: { div: 'I1', path: 'I1' },   // Serie A
+  78: { div: 'D1', path: 'D1' },    // Bundesliga
+  88: { div: 'N1', path: 'N1' },    // Eredivisie
+  94: { div: 'P1', path: 'P1' },    // Primeira Liga
+  144: { div: 'B1', path: 'B1' },   // Belgian Pro League
+  203: { div: 'T1', path: 'T1' },   // Super Lig
+  179: { div: 'SC0', path: 'SC0' }, // Scottish Premiership
 };
 
 // ====== FREE DATA SOURCES ======
