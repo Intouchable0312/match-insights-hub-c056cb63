@@ -34,6 +34,22 @@ const LEAGUE_THESPORTSDB_MAP: Record<number, string> = {
   4346: '4346', 4330: '4330', 4347: '4347', 4351: '4351', 4336: '4336', 4396: '4396',
 };
 
+// football-data.co.uk CSV file codes (free, unlimited, detailed stats)
+const LEAGUE_FDUK_MAP: Record<number, { div: string; path: string }> = {
+  4334: { div: 'F1', path: 'F1' },   // Ligue 1
+  4396: { div: 'F2', path: 'F2' },   // Ligue 2
+  4328: { div: 'E0', path: 'E0' },   // Premier League
+  4336: { div: 'E1', path: 'E1' },   // Championship
+  4335: { div: 'SP1', path: 'SP1' }, // La Liga
+  4332: { div: 'I1', path: 'I1' },   // Serie A
+  4331: { div: 'D1', path: 'D1' },   // Bundesliga
+  4337: { div: 'N1', path: 'N1' },   // Eredivisie
+  4344: { div: 'P1', path: 'P1' },   // Primeira Liga
+  4338: { div: 'B1', path: 'B1' },   // Belgian Pro League
+  4346: { div: 'T1', path: 'T1' },   // Super Lig
+  4330: { div: 'SC0', path: 'SC0' }, // Scottish Premiership
+};
+
 // ====== FREE DATA SOURCES ======
 
 // 1. ESPN Standings
@@ -255,7 +271,155 @@ async function fetchLeagueStats(leagueId: number): Promise<string> {
   Over 1.5: ${Math.round(over15Count / completed.length * 100)}%`;
 }
 
-// ====== NORMALIZE AI VALUES ======
+// 10. football-data.co.uk CSV — detailed match stats for the full season (tirs, corners, cartons, cotes)
+async function fetchTextContent(url: string, label: string, timeoutMs = 10000): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) { console.error(`  ✗ ${label}: ${res.status}`); return ""; }
+    const txt = await res.text();
+    console.log(`  ✓ ${label}: ${txt.length} chars`);
+    return txt;
+  } catch (err) { console.error(`  ✗ ${label}: ${err.message}`); return ""; }
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+async function fetchFootballDataUK(leagueId: number, season: number, homeTeam: string, awayTeam: string): Promise<string> {
+  const league = LEAGUE_FDUK_MAP[leagueId];
+  if (!league) return "";
+  const s1 = String(season).slice(2);
+  const s2 = String(season + 1).slice(2);
+  const csvUrl = `https://www.football-data.co.uk/mmz4281/${s1}${s2}/${league.path}.csv`;
+  const raw = await fetchTextContent(csvUrl, `FDUK-${league.div}`);
+  if (!raw) return "";
+
+  const lines = raw.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return "";
+  const headers = parseCSVLine(lines[0]);
+  const rows = lines.slice(1).map(l => {
+    const vals = parseCSVLine(l);
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+    return obj;
+  });
+
+  // Normalize team names for matching
+  const normalize = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const homeKey = normalize(homeTeam);
+  const awayKey = normalize(awayTeam);
+
+  // Find team matches (fuzzy match on first word)
+  const homeWords = homeTeam.toLowerCase().split(/\s+/);
+  const awayWords = awayTeam.toLowerCase().split(/\s+/);
+  const matchesTeam = (csvName: string, words: string[]) => {
+    const n = csvName.toLowerCase();
+    return words.some(w => w.length >= 3 && n.includes(w));
+  };
+
+  const homeMatches = rows.filter(r => matchesTeam(r.HomeTeam || '', homeWords) || matchesTeam(r.AwayTeam || '', homeWords));
+  const awayMatches = rows.filter(r => matchesTeam(r.HomeTeam || '', awayWords) || matchesTeam(r.AwayTeam || '', awayWords));
+
+  // H2H from CSV
+  const h2hCSV = rows.filter(r =>
+    (matchesTeam(r.HomeTeam || '', homeWords) && matchesTeam(r.AwayTeam || '', awayWords)) ||
+    (matchesTeam(r.HomeTeam || '', awayWords) && matchesTeam(r.AwayTeam || '', homeWords))
+  );
+
+  // Compute team stats from CSV
+  const computeStats = (matches: any[], teamWords: string[], teamName: string) => {
+    if (!matches.length) return "";
+    let w = 0, d = 0, l = 0, gf = 0, ga = 0, shots = 0, sot = 0, corners = 0, fouls = 0, yellows = 0, reds = 0;
+    matches.forEach(r => {
+      const isHome = matchesTeam(r.HomeTeam || '', teamWords);
+      const hg = parseInt(r.FTHG) || 0, ag = parseInt(r.FTAG) || 0;
+      if (isHome) {
+        gf += hg; ga += ag;
+        shots += parseInt(r.HS) || 0; sot += parseInt(r.HST) || 0;
+        corners += parseInt(r.HC) || 0; fouls += parseInt(r.HF) || 0;
+        yellows += parseInt(r.HY) || 0; reds += parseInt(r.HR) || 0;
+        if (hg > ag) w++; else if (hg === ag) d++; else l++;
+      } else {
+        gf += ag; ga += hg;
+        shots += parseInt(r.AS) || 0; sot += parseInt(r.AST) || 0;
+        corners += parseInt(r.AC) || 0; fouls += parseInt(r.AF) || 0;
+        yellows += parseInt(r.AY) || 0; reds += parseInt(r.AR) || 0;
+        if (ag > hg) w++; else if (hg === ag) d++; else l++;
+      }
+    });
+    const n = matches.length;
+    return `${teamName} — ${n} matchs joués cette saison:
+  Bilan: ${w}V ${d}N ${l}D | BM: ${gf} (${(gf/n).toFixed(1)}/m) BE: ${ga} (${(ga/n).toFixed(1)}/m)
+  Tirs: ${(shots/n).toFixed(1)}/m | Tirs cadrés: ${(sot/n).toFixed(1)}/m (${shots > 0 ? Math.round(sot/shots*100) : 0}% cadrage)
+  Corners: ${(corners/n).toFixed(1)}/m | Fautes: ${(fouls/n).toFixed(1)}/m
+  Cartons jaunes: ${yellows} (${(yellows/n).toFixed(1)}/m) | Rouges: ${reds}`;
+  };
+
+  let txt = "";
+  const homeStats = computeStats(homeMatches, homeWords, homeTeam);
+  const awayStats = computeStats(awayMatches, awayWords, awayTeam);
+  if (homeStats) txt += homeStats;
+  if (awayStats) txt += (txt ? "\n\n" : "") + awayStats;
+
+  // H2H from CSV this season
+  if (h2hCSV.length > 0) {
+    txt += "\n\nConfrontations cette saison:\n";
+    txt += h2hCSV.map(r => {
+      const line = `  ${r.HomeTeam} ${r.FTHG}-${r.FTAG} ${r.AwayTeam} (${r.Date})`;
+      const details = [];
+      if (r.HS && r.AS) details.push(`Tirs: ${r.HS}-${r.AS}`);
+      if (r.HST && r.AST) details.push(`Cadrés: ${r.HST}-${r.AST}`);
+      if (r.HC && r.AC) details.push(`Corners: ${r.HC}-${r.AC}`);
+      if (r.HY && r.AY) details.push(`Jaunes: ${r.HY}-${r.AY}`);
+      return details.length ? `${line}\n    ${details.join(' | ')}` : line;
+    }).join("\n");
+  }
+
+  // Bookmaker odds for latest matches
+  const lastHomeMatch = homeMatches[homeMatches.length - 1];
+  const lastAwayMatch = awayMatches[awayMatches.length - 1];
+  if (lastHomeMatch?.B365H) {
+    txt += `\n\nDernières cotes ${homeTeam}: 1=${lastHomeMatch.B365H} X=${lastHomeMatch.B365D} 2=${lastHomeMatch.B365A}`;
+  }
+  if (lastAwayMatch?.B365H) {
+    txt += `\nDernières cotes ${awayTeam}: 1=${lastAwayMatch.B365H} X=${lastAwayMatch.B365D} 2=${lastAwayMatch.B365A}`;
+  }
+
+  // League-wide averages from CSV
+  if (rows.length >= 20) {
+    let tg = 0, btts = 0, o25 = 0, o15 = 0, ts = 0, tc = 0;
+    rows.forEach(r => {
+      const hg = parseInt(r.FTHG) || 0, ag = parseInt(r.FTAG) || 0;
+      tg += hg + ag;
+      if (hg > 0 && ag > 0) btts++;
+      if (hg + ag > 2) o25++;
+      if (hg + ag > 1) o15++;
+      ts += (parseInt(r.HS) || 0) + (parseInt(r.AS) || 0);
+      tc += (parseInt(r.HC) || 0) + (parseInt(r.AC) || 0);
+    });
+    const n = rows.length;
+    txt += `\n\nMoyennes ligue (${n} matchs saison):
+  Buts/match: ${(tg/n).toFixed(2)} | BTTS: ${Math.round(btts/n*100)}% | O2.5: ${Math.round(o25/n*100)}% | O1.5: ${Math.round(o15/n*100)}%
+  Tirs/match: ${(ts/n).toFixed(1)} | Corners/match: ${(tc/n).toFixed(1)}`;
+  }
+
+  return txt;
+}
+
+
 function normalizePrediction(prediction: any): any {
   const probFields = [
     'home_win_prob', 'draw_prob', 'away_win_prob',
@@ -322,6 +486,7 @@ serve(async (req) => {
       weatherTxt, leagueStatsTxt,
       espnHomeStats, espnAwayStats,
       espnHomeResults, espnAwayResults,
+      fdukStats,
     ] = await Promise.all([
       fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
@@ -334,6 +499,7 @@ serve(async (req) => {
       fetchESPNTeamStats(match.away_team_name, match.league_id),
       fetchESPNTeamResults(match.home_team_name, match.league_id),
       fetchESPNTeamResults(match.away_team_name, match.league_id),
+      fetchFootballDataUK(match.league_id, currentSeason, match.home_team_name, match.away_team_name),
     ]);
 
     // TheSportsDB last/next events
@@ -375,6 +541,7 @@ serve(async (req) => {
     check(!!leagueStatsTxt);
     check(!!(homeEventsTxt || awayEventsTxt));
     check(!!(espnHomeStats || espnAwayStats));
+    check(!!fdukStats);
 
     console.log(`\n📊 ${srcCount} data sources collected`);
 
@@ -384,13 +551,15 @@ serve(async (req) => {
 RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 25%, Stats 20%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 10%
+3. Pondération: Forme 25%, Stats détaillées (tirs, corners, cotes) 25%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 5%
 4. Séries victoires/défaites = facteur MAJEUR
 5. Paris: recommande UNIQUEMENT probabilité > 55%, justifie avec données
 6. Prends en compte la météo si disponible (pluie → moins de buts, vent → jeu perturbé)
 7. Prends en compte le calendrier (congestion de matchs = fatigue)
-8. Réponds en français
-9. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
+8. Utilise les STATS DÉTAILLÉES (tirs cadrés, corners, fautes, cartons) pour affiner l'analyse
+9. Utilise les COTES BOOKMAKERS pour valider/invalider tes prédictions
+10. Réponds en français
+11. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${match.home_team_name} vs ${match.away_team_name}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
@@ -404,6 +573,9 @@ ${recentFormTxt}
 
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
+
+══ STATS DÉTAILLÉES SAISON (tirs, corners, cartons, cotes) ══
+${fdukStats || "Non disponible"}
 
 ══ MÉTÉO AU STADE ══
 ${weatherTxt || "Non disponible"}
@@ -495,7 +667,7 @@ ${teamInfoTxt}
     }
 
     result.prediction = normalizePrediction(result.prediction);
-    const quality = Math.min(100, Math.round((srcCount / 9) * 100));
+    const quality = Math.min(100, Math.round((srcCount / 10) * 100));
     const uncertainty = Math.round(Math.max(0, 100 - (result.prediction?.confidence ?? 50)));
 
     console.log(`✅ ${result.prediction.home_win_prob}%/${result.prediction.draw_prob}%/${result.prediction.away_win_prob}% | ${result.report?.suggested_bets?.length || 0} paris | ${srcCount} sources`);
