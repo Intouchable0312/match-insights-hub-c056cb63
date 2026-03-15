@@ -7,7 +7,7 @@ import { AnalysisLoader } from '@/components/AnalysisLoader';
 import { RealAnalysisReport } from '@/components/RealAnalysisReport';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Zap, RefreshCw, Eye, Clock, MapPin, Activity, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Zap, RefreshCw, Clock, MapPin, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,6 +16,7 @@ const ANALYSIS_STEPS = [
   'Récupération des confrontations directes',
   'Récupération du classement',
   'Récupération des cotes',
+  'Récupération des blessures',
   'Agrégation des sources',
   'Analyse IA en cours',
   'Génération du rapport',
@@ -33,7 +34,6 @@ export default function MatchDetail() {
   );
   const [progress, setProgress] = useState(0);
 
-  // Fetch match from DB
   const { data: match, isLoading: matchLoading, error: matchError } = useQuery({
     queryKey: ['match', id],
     queryFn: async () => {
@@ -48,7 +48,6 @@ export default function MatchDetail() {
     enabled: !!id,
   });
 
-  // Fetch existing analysis
   useEffect(() => {
     if (id) {
       getAnalysis(id).then(a => {
@@ -64,7 +63,6 @@ export default function MatchDetail() {
     setProgress(0);
     setSteps(ANALYSIS_STEPS.map(l => ({ label: l, status: 'pending' as const })));
 
-    // Simulate step progression while real analysis runs
     let step = 0;
     const interval = setInterval(() => {
       if (step < ANALYSIS_STEPS.length - 1) {
@@ -75,7 +73,7 @@ export default function MatchDetail() {
         setProgress(Math.round(((step + 1) / ANALYSIS_STEPS.length) * 90));
         step++;
       }
-    }, 1500);
+    }, 1200);
 
     try {
       const result = await analyzeMatch(id, 'full');
@@ -91,7 +89,7 @@ export default function MatchDetail() {
     } catch (err) {
       clearInterval(interval);
       setIsAnalyzing(false);
-      setSteps(prev => prev.map((s, i) => ({
+      setSteps(prev => prev.map(s => ({
         ...s,
         status: s.status === 'active' ? 'error' : s.status,
       })));
@@ -115,9 +113,11 @@ export default function MatchDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
-          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-          <p className="text-muted-foreground">Match introuvable</p>
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <AlertCircle className="h-7 w-7 text-destructive" />
+          </div>
+          <p className="text-muted-foreground font-medium">Match introuvable</p>
+          <Button variant="outline" className="rounded-full" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Retour
           </Button>
         </div>
@@ -134,96 +134,96 @@ export default function MatchDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container max-w-3xl mx-auto px-4 py-3">
+      {/* Header */}
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/')}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => navigate('/')}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-                <Activity className="h-3.5 w-3.5 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-sm text-gradient truncate">FootAnalytics</span>
-            </div>
+            <span className="font-display font-black text-lg">ANAP</span>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <main className="container max-w-3xl mx-auto px-4 py-6 space-y-5">
         {/* Match Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-6 text-center space-y-4">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-3xl p-6 text-center space-y-5">
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             {match.league_logo && <img src={match.league_logo} alt="" className="h-4 w-4" />}
-            <span>{match.league_name}</span>
-            <span>·</span>
+            <span className="font-semibold">{match.league_name}</span>
+            <span className="text-border">·</span>
             <span>{match.league_country}</span>
-            {match.league_round && <><span>·</span><span>{match.league_round}</span></>}
+            {match.league_round && <><span className="text-border">·</span><span>{match.league_round}</span></>}
           </div>
 
-          <div className="flex items-center justify-center gap-6">
+          <div className="flex items-center justify-center gap-8">
             <div className="text-center">
-              <div className="h-16 w-16 rounded-xl bg-surface flex items-center justify-center mx-auto mb-2 overflow-hidden">
+              <div className="h-18 w-18 rounded-2xl bg-surface flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ height: 72, width: 72 }}>
                 {match.home_team_logo ? (
-                  <img src={match.home_team_logo} alt={match.home_team_name} className="h-10 w-10 object-contain" />
+                  <img src={match.home_team_logo} alt={match.home_team_name} className="h-12 w-12 object-contain" />
                 ) : (
-                  <span className="font-display font-bold text-lg">{match.home_team_name.slice(0, 3).toUpperCase()}</span>
+                  <span className="font-display font-black text-lg">{match.home_team_name.slice(0, 3).toUpperCase()}</span>
                 )}
               </div>
-              <p className="font-display font-semibold text-sm">{match.home_team_name}</p>
+              <p className="font-display font-bold text-sm">{match.home_team_name}</p>
             </div>
 
             <div className="text-center">
               {(isFinished || isLive) && match.home_score != null ? (
-                <div className="font-display font-bold text-3xl">
-                  {match.home_score} <span className="text-muted-foreground">-</span> {match.away_score}
+                <div className="font-display font-black text-4xl tracking-tight">
+                  {match.home_score} <span className="text-muted-foreground mx-1">-</span> {match.away_score}
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <p className="font-display font-bold text-xl text-primary">{time}</p>
+                  <p className="font-display font-black text-2xl text-primary">{time}</p>
                   <p className="text-xs text-muted-foreground capitalize">{dateStr}</p>
                 </div>
               )}
               {isLive && (
-                <Badge className="bg-live/20 text-live border-live/30 badge-live mt-1">LIVE</Badge>
+                <Badge className="bg-live/15 text-live border-none rounded-full badge-live mt-2 font-bold">LIVE</Badge>
               )}
             </div>
 
             <div className="text-center">
-              <div className="h-16 w-16 rounded-xl bg-surface flex items-center justify-center mx-auto mb-2 overflow-hidden">
+              <div className="h-18 w-18 rounded-2xl bg-surface flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ height: 72, width: 72 }}>
                 {match.away_team_logo ? (
-                  <img src={match.away_team_logo} alt={match.away_team_name} className="h-10 w-10 object-contain" />
+                  <img src={match.away_team_logo} alt={match.away_team_name} className="h-12 w-12 object-contain" />
                 ) : (
-                  <span className="font-display font-bold text-lg">{match.away_team_name.slice(0, 3).toUpperCase()}</span>
+                  <span className="font-display font-black text-lg">{match.away_team_name.slice(0, 3).toUpperCase()}</span>
                 )}
               </div>
-              <p className="font-display font-semibold text-sm">{match.away_team_name}</p>
+              <p className="font-display font-bold text-sm">{match.away_team_name}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
             {match.venue_name && (
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{match.venue_name}{match.venue_city ? `, ${match.venue_city}` : ''}</span>
+              <span className="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-full">
+                <MapPin className="h-3 w-3" />{match.venue_name}{match.venue_city ? `, ${match.venue_city}` : ''}
+              </span>
             )}
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{time}</span>
+            <span className="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-full">
+              <Clock className="h-3 w-3" />{time}
+            </span>
           </div>
         </motion.div>
 
-        {/* Action Buttons */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-wrap gap-2">
+        {/* Action */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           {!analysis && !isAnalyzing && (
-            <Button className="flex-1 glow-primary gap-2" onClick={runAnalysis}>
-              <Zap className="h-4 w-4" /> Lancer l'analyse IA
+            <Button className="w-full h-12 rounded-2xl gap-2 font-display font-bold text-base" onClick={runAnalysis}>
+              <Zap className="h-5 w-5" /> Lancer l'analyse IA
             </Button>
           )}
           {analysis && !isAnalyzing && (
-            <Button variant="outline" className="flex-1 gap-2" onClick={runAnalysis}>
-              <RefreshCw className="h-4 w-4" /> Actualiser l'analyse
+            <Button variant="outline" className="w-full h-12 rounded-2xl gap-2 font-display font-bold text-base" onClick={runAnalysis}>
+              <RefreshCw className="h-5 w-5" /> Actualiser l'analyse
             </Button>
           )}
           {isAnalyzing && (
-            <Button variant="outline" className="flex-1" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4 mr-2" /> Retour à la liste
+            <Button variant="outline" className="w-full h-12 rounded-2xl font-display font-bold" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Retour
             </Button>
           )}
         </motion.div>

@@ -1,6 +1,5 @@
 import { DbMatch } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Clock, Eye, Zap, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -26,84 +25,83 @@ function getAnalysisStatusFromMatch(match: DbMatch) {
 export function RealMatchCard({ match, index }: { match: DbMatch; index: number }) {
   const navigate = useNavigate();
   const time = new Date(match.kickoff).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  const { isLive, isFinished, label: statusLabel } = getStatusInfo(match.status_short);
+  const { isLive, isFinished } = getStatusInfo(match.status_short);
   const analysisInfo = getAnalysisStatusFromMatch(match);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03, duration: 0.3 }}
-      className="glass rounded-lg p-4 glass-hover cursor-pointer group"
+      transition={{ delay: index * 0.03, duration: 0.25 }}
+      className="glass rounded-2xl p-4 glass-hover cursor-pointer group"
       onClick={() => navigate(`/match/${match.id}`)}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-4">
         {/* Time / Status */}
-        <div className="flex flex-col items-center min-w-[52px]">
+        <div className="flex flex-col items-center min-w-[50px]">
           {isLive ? (
-            <span className="text-live font-display font-bold text-sm badge-live">LIVE</span>
+            <span className="text-live font-display font-extrabold text-sm badge-live">LIVE</span>
           ) : isFinished ? (
-            <span className="text-muted-foreground text-xs font-medium">Terminé</span>
+            <span className="text-muted-foreground text-xs font-semibold">Terminé</span>
           ) : (
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span className="text-sm font-medium">{time}</span>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              <span className="text-sm font-bold font-display">{time}</span>
             </div>
           )}
         </div>
 
         {/* Teams */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex items-center gap-2.5">
                 {match.home_team_logo && (
-                  <img src={match.home_team_logo} alt="" className="h-5 w-5 object-contain" />
+                  <img src={match.home_team_logo} alt="" className="h-6 w-6 object-contain" />
                 )}
-                <p className="font-display font-semibold text-sm truncate text-foreground">
-                  {match.home_team_name}
-                </p>
+                <p className="font-display font-bold text-sm truncate">{match.home_team_name}</p>
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2.5">
                 {match.away_team_logo && (
-                  <img src={match.away_team_logo} alt="" className="h-5 w-5 object-contain" />
+                  <img src={match.away_team_logo} alt="" className="h-6 w-6 object-contain" />
                 )}
-                <p className="font-display font-semibold text-sm truncate text-foreground">
-                  {match.away_team_name}
-                </p>
+                <p className="font-display font-bold text-sm truncate">{match.away_team_name}</p>
               </div>
             </div>
             {(isFinished || isLive) && match.home_score != null && (
-              <div className="flex flex-col items-end">
-                <span className="font-display font-bold text-lg">{match.home_score}</span>
-                <span className="font-display font-bold text-lg">{match.away_score}</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="font-display font-black text-xl leading-none">{match.home_score}</span>
+                <span className="font-display font-black text-xl leading-none">{match.away_score}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Status + Action */}
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
-            analysisInfo.status === 'completed' ? 'border-success/30 text-success' :
-            analysisInfo.status === 'generating' ? 'border-primary/30 text-primary' :
-            'border-border text-muted-foreground'
+        {/* Action */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {analysisInfo.status === 'completed' && (
+            <Badge className="bg-success/15 text-success border-none rounded-full text-[10px] px-2 py-0.5 font-semibold">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Prête
+            </Badge>
+          )}
+          {analysisInfo.status === 'generating' && (
+            <Badge className="bg-primary/15 text-primary border-none rounded-full text-[10px] px-2 py-0.5 font-semibold">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              En cours
+            </Badge>
+          )}
+          <div className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
+            analysisInfo.status === 'completed' 
+              ? 'bg-surface text-foreground group-hover:bg-surface-hover' 
+              : 'bg-primary text-primary-foreground'
           }`}>
-            {analysisInfo.status === 'completed' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-            {analysisInfo.status === 'generating' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-            {analysisInfo.label}
-          </Badge>
-          <Button 
-            size="sm" 
-            className="h-7 text-xs gap-1 mt-1 opacity-80 group-hover:opacity-100 transition-opacity"
-            variant={analysisInfo.status === 'completed' ? 'outline' : 'default'}
-          >
             {analysisInfo.status === 'completed' ? (
-              <><Eye className="h-3 w-3" /> Voir</>
+              <><Eye className="h-3.5 w-3.5" /> Voir</>
             ) : (
-              <><Zap className="h-3 w-3" /> Analyser</>
+              <><Zap className="h-3.5 w-3.5" /> Analyser</>
             )}
-          </Button>
+          </div>
         </div>
       </div>
     </motion.div>
