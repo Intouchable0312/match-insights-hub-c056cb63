@@ -168,8 +168,13 @@ const Index = () => {
               ANAP
             </h1>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => refetch()}>
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 rounded-full" 
+                onClick={() => setIsDark(!isDark)}
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground bg-surface px-4 py-2 rounded-full">
                 <span className="font-semibold text-foreground">{totalMatches}</span> matchs
