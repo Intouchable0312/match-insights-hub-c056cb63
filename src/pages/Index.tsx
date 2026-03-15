@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchMatches, DbMatch, getLeaguePriority } from '@/lib/api';
 import { RealLeagueGroup } from '@/components/RealLeagueGroup';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { Search, ChevronLeft, ChevronRight, Star, CheckCircle2, Loader2, AlertCircle, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Star, CheckCircle2, Loader2, AlertCircle, RefreshCw, SlidersHorizontal, X, Sun, Moon } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 
