@@ -43,12 +43,6 @@ export interface DbAnalysis {
 }
 
 export async function fetchMatches(date: string): Promise<DbMatch[]> {
-  const { data, error } = await supabase.functions.invoke('fetch-matches', {
-    body: null,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-  // Use query params via manual fetch since invoke doesn't support query params easily
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-matches?date=${date}`,
     {
