@@ -238,7 +238,7 @@ export default function MatchDetail() {
 
         {/* Analysis Content */}
         {isAnalyzing && <AnalysisLoader steps={steps} progress={progress} />}
-        {analysis && !isAnalyzing && <RealAnalysisReport analysis={analysis} />}
+        {analysis && !isAnalyzing && <RealAnalysisReport analysis={analysis} homeTeamName={match.home_team_name} awayTeamName={match.away_team_name} />}
       </main>
     </div>
   );
