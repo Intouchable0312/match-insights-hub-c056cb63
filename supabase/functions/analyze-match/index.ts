@@ -20,34 +20,34 @@ async function simpleFetch(url: string, label: string, timeoutMs = 8000): Promis
   } catch (err) { console.error(`  ✗ ${label}: ${err.message}`); return null; }
 }
 
-// ====== LEAGUE MAPPINGS (API-Football IDs used by ESPN fetch) ======
+// ====== LEAGUE MAPPINGS ======
 const LEAGUE_ESPN_MAP: Record<number, string> = {
-  61: 'fra.1', 39: 'eng.1', 140: 'esp.1', 135: 'ita.1', 78: 'ger.1',
-  2: 'uefa.champions', 3: 'uefa.europa',
-  94: 'por.1', 88: 'ned.1', 144: 'bel.1', 203: 'tur.1', 179: 'sco.1',
-  40: 'eng.2', 63: 'fra.2', 253: 'usa.1', 71: 'bra.1',
+  4334: 'fra.1', 4328: 'eng.1', 4335: 'esp.1', 4332: 'ita.1', 4331: 'ger.1',
+  4480: 'uefa.champions', 4481: 'uefa.europa',
+  4344: 'por.1', 4337: 'ned.1', 4338: 'bel.1', 4346: 'tur.1', 4330: 'sco.1',
+  4336: 'eng.2', 4396: 'fra.2', 4347: 'usa.1', 4351: 'bra.1',
 };
 
 const LEAGUE_THESPORTSDB_MAP: Record<number, string> = {
-  61: '4334', 39: '4328', 140: '4335', 135: '4332', 78: '4331',
-  2: '4480', 3: '4481', 94: '4344', 88: '4337', 144: '4338',
-  203: '4346', 179: '4330', 253: '4347', 71: '4351', 40: '4336', 63: '4396',
+  4334: '4334', 4328: '4328', 4335: '4335', 4332: '4332', 4331: '4331',
+  4480: '4480', 4481: '4481', 4344: '4344', 4337: '4337', 4338: '4338',
+  4346: '4346', 4330: '4330', 4347: '4347', 4351: '4351', 4336: '4336', 4396: '4396',
 };
 
 // football-data.co.uk CSV file codes (free, unlimited, detailed stats)
 const LEAGUE_FDUK_MAP: Record<number, { div: string; path: string }> = {
-  61: { div: 'F1', path: 'F1' },    // Ligue 1
-  63: { div: 'F2', path: 'F2' },    // Ligue 2
-  39: { div: 'E0', path: 'E0' },    // Premier League
-  40: { div: 'E1', path: 'E1' },    // Championship
-  140: { div: 'SP1', path: 'SP1' }, // La Liga
-  135: { div: 'I1', path: 'I1' },   // Serie A
-  78: { div: 'D1', path: 'D1' },    // Bundesliga
-  88: { div: 'N1', path: 'N1' },    // Eredivisie
-  94: { div: 'P1', path: 'P1' },    // Primeira Liga
-  144: { div: 'B1', path: 'B1' },   // Belgian Pro League
-  203: { div: 'T1', path: 'T1' },   // Super Lig
-  179: { div: 'SC0', path: 'SC0' }, // Scottish Premiership
+  4334: { div: 'F1', path: 'F1' },   // Ligue 1
+  4396: { div: 'F2', path: 'F2' },   // Ligue 2
+  4328: { div: 'E0', path: 'E0' },   // Premier League
+  4336: { div: 'E1', path: 'E1' },   // Championship
+  4335: { div: 'SP1', path: 'SP1' }, // La Liga
+  4332: { div: 'I1', path: 'I1' },   // Serie A
+  4331: { div: 'D1', path: 'D1' },   // Bundesliga
+  4337: { div: 'N1', path: 'N1' },   // Eredivisie
+  4344: { div: 'P1', path: 'P1' },   // Primeira Liga
+  4338: { div: 'B1', path: 'B1' },   // Belgian Pro League
+  4346: { div: 'T1', path: 'T1' },   // Super Lig
+  4330: { div: 'SC0', path: 'SC0' }, // Scottish Premiership
 };
 
 // ====== FREE DATA SOURCES ======
@@ -271,121 +271,6 @@ async function fetchLeagueStats(leagueId: number): Promise<string> {
   Over 1.5: ${Math.round(over15Count / completed.length * 100)}%`;
 }
 
-// 10. ESPN Injuries (FREE, UNLIMITED)
-async function fetchESPNInjuries(teamId: number, teamName: string, leagueId: number): Promise<string> {
-  const slug = LEAGUE_ESPN_MAP[leagueId];
-  if (!slug) return "";
-  
-  // First find ESPN team ID from teams list
-  const teamsData = await simpleFetch(
-    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams`,
-    `InjTeams-${teamName.slice(0,8)}`
-  );
-  const teams = teamsData?.sports?.[0]?.leagues?.[0]?.teams || [];
-  const keyword = teamName.toLowerCase().split(' ')[0];
-  const teamEntry = teams.find((t: any) =>
-    t.team?.displayName?.toLowerCase().includes(keyword) ||
-    t.team?.shortDisplayName?.toLowerCase().includes(keyword) ||
-    t.team?.name?.toLowerCase().includes(keyword)
-  );
-  if (!teamEntry?.team?.id) return "";
-  
-  const espnTeamId = teamEntry.team.id;
-  
-  // Try roster endpoint which includes injury info
-  const rosterData = await simpleFetch(
-    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams/${espnTeamId}/roster`,
-    `Roster-${teamName.slice(0,8)}`
-  );
-  
-  if (!rosterData?.athletes?.length && !rosterData?.entries?.length) {
-    // Try alternative injuries endpoint
-    const injData = await simpleFetch(
-      `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams/${espnTeamId}?enable=roster,injuries`,
-      `Inj-${teamName.slice(0,8)}`
-    );
-    const injuries = injData?.team?.injuries || [];
-    if (!injuries.length) return "";
-    return `${teamName} - Blessures/Absences:\n` + injuries.map((inj: any) => {
-      const player = inj.athlete?.displayName || "Inconnu";
-      const status = inj.status || "?";
-      const details = inj.details?.detail || inj.type || "";
-      return `  ❌ ${player} — ${status}${details ? ` (${details})` : ''}`;
-    }).join("\n");
-  }
-  
-  // Parse roster for injured players
-  const allPlayers = (rosterData?.athletes || rosterData?.entries || []).flatMap((group: any) => 
-    group.items || group.athletes || (Array.isArray(group) ? group : [group])
-  );
-  
-  const injured = allPlayers.filter((p: any) => {
-    const status = (p.status?.type || p.injuries?.[0]?.status || '').toLowerCase();
-    return status === 'out' || status === 'doubtful' || status === 'questionable' || 
-           status === 'injured' || status === 'suspended' || status === 'day-to-day';
-  });
-  
-  if (!injured.length) return "";
-  
-  return `${teamName} - Blessures/Absences:\n` + injured.map((p: any) => {
-    const name = p.displayName || p.athlete?.displayName || p.fullName || "?";
-    const pos = p.position?.abbreviation || p.position?.name || "";
-    const status = p.status?.type || p.injuries?.[0]?.status || "?";
-    const detail = p.injuries?.[0]?.details?.detail || p.injuries?.[0]?.type || "";
-    return `  ❌ ${name} (${pos}) — ${status}${detail ? `: ${detail}` : ''}`;
-  }).join("\n");
-}
-
-// 11. ESPN Team Schedule (past results for form)
-async function fetchESPNSchedule(teamId: number, teamName: string, leagueId: number): Promise<string> {
-  const slug = LEAGUE_ESPN_MAP[leagueId];
-  if (!slug) return "";
-  
-  const teamsData = await simpleFetch(
-    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams`,
-    `SchedTeams-${teamName.slice(0,8)}`
-  );
-  const teams = teamsData?.sports?.[0]?.leagues?.[0]?.teams || [];
-  const keyword = teamName.toLowerCase().split(' ')[0];
-  const teamEntry = teams.find((t: any) =>
-    t.team?.displayName?.toLowerCase().includes(keyword) ||
-    t.team?.shortDisplayName?.toLowerCase().includes(keyword)
-  );
-  if (!teamEntry?.team?.id) return "";
-  
-  const espnTeamId = teamEntry.team.id;
-  const schedData = await simpleFetch(
-    `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/teams/${espnTeamId}/schedule`,
-    `Sched-${teamName.slice(0,8)}`
-  );
-  
-  if (!schedData?.events?.length) return "";
-  
-  // Get last 10 completed matches
-  const completed = schedData.events
-    .filter((e: any) => e.competitions?.[0]?.status?.type?.completed)
-    .slice(-10);
-  
-  if (!completed.length) return "";
-  
-  let wins = 0, draws = 0, losses = 0;
-  const lines = completed.map((e: any) => {
-    const comp = e.competitions[0];
-    const home = comp.competitors?.find((c: any) => c.homeAway === 'home');
-    const away = comp.competitors?.find((c: any) => c.homeAway === 'away');
-    const hs = parseInt(home?.score || '0'), as_ = parseInt(away?.score || '0');
-    const isHome = home?.team?.displayName?.toLowerCase().includes(keyword);
-    if (isHome) {
-      if (hs > as_) wins++; else if (hs === as_) draws++; else losses++;
-    } else {
-      if (as_ > hs) wins++; else if (hs === as_) draws++; else losses++;
-    }
-    return `  ${home?.team?.abbreviation || '?'} ${hs}-${as_} ${away?.team?.abbreviation || '?'} (${e.date?.split('T')[0]})`;
-  });
-  
-  return `${teamName} — 10 derniers matchs (${wins}V ${draws}N ${losses}D):\n${lines.join("\n")}`;
-}
-
 // 10. football-data.co.uk CSV — detailed match stats for the full season (tirs, corners, cartons, cotes)
 async function fetchTextContent(url: string, label: string, timeoutMs = 10000): Promise<string> {
   try {
@@ -602,8 +487,6 @@ serve(async (req) => {
       espnHomeStats, espnAwayStats,
       espnHomeResults, espnAwayResults,
       fdukStats,
-      homeInjuries, awayInjuries,
-      homeSchedule, awaySchedule,
     ] = await Promise.all([
       fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
@@ -617,10 +500,6 @@ serve(async (req) => {
       fetchESPNTeamResults(match.home_team_name, match.league_id),
       fetchESPNTeamResults(match.away_team_name, match.league_id),
       fetchFootballDataUK(match.league_id, currentSeason, match.home_team_name, match.away_team_name),
-      fetchESPNInjuries(match.home_team_id, match.home_team_name, match.league_id),
-      fetchESPNInjuries(match.away_team_id, match.away_team_name, match.league_id),
-      fetchESPNSchedule(match.home_team_id, match.home_team_name, match.league_id),
-      fetchESPNSchedule(match.away_team_id, match.away_team_name, match.league_id),
     ]);
 
     // TheSportsDB last/next events
@@ -639,19 +518,11 @@ serve(async (req) => {
 
     // Recent form
     let recentFormTxt = "";
-    if (homeSchedule) recentFormTxt += homeSchedule;
-    if (awaySchedule) recentFormTxt += (recentFormTxt ? "\n\n" : "") + awaySchedule;
-    if (espnHomeResults) recentFormTxt += (recentFormTxt ? "\n\n" : "") + `${match.home_team_name}:\n${espnHomeResults}`;
-    if (espnAwayResults) recentFormTxt += (recentFormTxt ? "\n\n" : "") + `${match.away_team_name}:\n${espnAwayResults}`;
+    if (espnHomeResults) recentFormTxt += `${match.home_team_name}:\n${espnHomeResults}`;
+    if (espnAwayResults) recentFormTxt += `\n${match.away_team_name}:\n${espnAwayResults}`;
     if (homeEventsTxt) recentFormTxt += `\n\n${homeEventsTxt}`;
     if (awayEventsTxt) recentFormTxt += `\n\n${awayEventsTxt}`;
     if (!recentFormTxt) recentFormTxt = "Forme récente non disponible";
-
-    // Injuries
-    let injuriesTxt = "";
-    if (homeInjuries) injuriesTxt += homeInjuries;
-    if (awayInjuries) injuriesTxt += (injuriesTxt ? "\n\n" : "") + awayInjuries;
-    if (!injuriesTxt) injuriesTxt = "Aucune information sur les blessures disponible";
 
     // H2H
     const h2hTxt = tsdbH2H || "H2H non disponible";
@@ -671,8 +542,6 @@ serve(async (req) => {
     check(!!(homeEventsTxt || awayEventsTxt));
     check(!!(espnHomeStats || espnAwayStats));
     check(!!fdukStats);
-    check(!injuriesTxt.includes("Aucune"));
-    check(!!(homeSchedule || awaySchedule));
 
     console.log(`\n📊 ${srcCount} data sources collected`);
 
@@ -682,16 +551,15 @@ serve(async (req) => {
 RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 20%, Stats détaillées 20%, Blessures/Absences 20%, Classement 15%, H2H 10%, Météo/Dom 10%, Calendrier 5%
+3. Pondération: Forme 25%, Stats détaillées (tirs, corners, cotes) 25%, Classement 20%, H2H 15%, Météo/Dom 10%, Calendrier 5%
 4. Séries victoires/défaites = facteur MAJEUR
 5. Paris: recommande UNIQUEMENT probabilité > 55%, justifie avec données
 6. Prends en compte la météo si disponible (pluie → moins de buts, vent → jeu perturbé)
 7. Prends en compte le calendrier (congestion de matchs = fatigue)
 8. Utilise les STATS DÉTAILLÉES (tirs cadrés, corners, fautes, cartons) pour affiner l'analyse
 9. Utilise les COTES BOOKMAKERS pour valider/invalider tes prédictions
-10. Les BLESSURES et ABSENCES sont critiques — un joueur clé absent peut tout changer
-11. Réponds en français
-12. IMPORTANT pour "data_quality_assessment": Évalue la qualité SANS JAMAIS mentionner de nom de source/API/site. Parle uniquement de "données disponibles".`;
+10. Réponds en français
+11. IMPORTANT pour "data_quality_assessment": Évalue la qualité et la quantité des données disponibles SANS JAMAIS mentionner le nom d'une API, d'un site web, ou d'une source de données. Parle uniquement en termes de "données disponibles", "informations collectées", "statistiques accessibles". Ne cite JAMAIS de nom de fournisseur.`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${match.home_team_name} vs ${match.away_team_name}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
@@ -702,9 +570,6 @@ ${standingsTxt}
 
 ══ FORME RÉCENTE & SÉRIES ══
 ${recentFormTxt}
-
-══ BLESSURES & ABSENCES ══
-${injuriesTxt}
 
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
@@ -722,7 +587,7 @@ ${leagueStatsTxt || "Non disponible"}
 ${teamInfoTxt}
 
 ⚠️ RAPPEL: Probabilités en 0-100. home+draw+away=100. Analyse TOUT et fournis les paris les plus sécurisés.
-⚠️ data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE/API/SITE.`;
+⚠️ data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE/API/SITE. Parle uniquement de "données disponibles".`;
 
     console.log("🤖 Calling AI...");
 
