@@ -13,11 +13,11 @@ import { useToast } from '@/hooks/use-toast';
 
 const ANALYSIS_STEPS = [
   'Récupération des données match',
-  'Récupération des confrontations directes',
-  'Récupération du classement',
-  'Récupération des cotes',
-  'Récupération des blessures',
+  'Recherche web : blessures & effectifs',
+  'Recherche web : forme récente',
+  'Recherche web : tactique & contexte',
   'Agrégation des sources',
+  'Validation temporelle',
   'Analyse IA en cours',
   'Génération du rapport',
 ];
@@ -238,7 +238,13 @@ export default function MatchDetail() {
 
         {/* Analysis Content */}
         {isAnalyzing && <AnalysisLoader steps={steps} progress={progress} />}
-        {analysis && !isAnalyzing && <RealAnalysisReport analysis={analysis} />}
+        {analysis && !isAnalyzing && (
+          <RealAnalysisReport
+            analysis={analysis}
+            homeTeamName={match.home_team_name}
+            awayTeamName={match.away_team_name}
+          />
+        )}
       </main>
     </div>
   );
