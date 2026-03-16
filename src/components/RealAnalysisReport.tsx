@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   TrendingUp, Target, AlertTriangle, Database, Clock,
   ArrowUp, ArrowDown, Minus, Users, Swords, Flag,
-  ShieldAlert, FileText, ChevronDown, Lightbulb, Shield,
+  ShieldAlert, FileText, ChevronDown, Shield,
   Zap
 } from 'lucide-react';
 
@@ -32,86 +32,41 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
   const homeName = homeTeamName || 'Équipe domicile';
   const awayName = awayTeamName || 'Équipe extérieur';
 
-  // Extract suggested bets from report
-  const suggestedBets: { type: string; explanation: string; confidence: string }[] =
+  const suggestedBets: { type: string; category?: string; explanation: string; confidence: string; probability?: number }[] =
     report.suggested_bets || report.paris_suggeres || [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
 
-      {/* ─── 1. PARIS SUGGÉRÉS ─── */}
-      {suggestedBets.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-display font-black text-lg flex items-center gap-2 px-1">
-            <Lightbulb className="h-5 w-5 text-warning" /> Paris suggérés
+      {/* ─── 1. RAPPORT D'ANALYSE (résumé) ─── */}
+      {report.summary && (
+        <section className="glass rounded-3xl p-5">
+          <h2 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Rapport d'analyse
           </h2>
-          <div className="grid gap-3">
-            {suggestedBets.map((bet, i) => (
-              <BetCard key={i} index={i + 1} bet={bet} />
-            ))}
-          </div>
+          <p className="text-sm text-secondary-foreground leading-relaxed whitespace-pre-line">{report.summary}</p>
         </section>
       )}
 
-      {/* ─── 2. ANALYSE RAPIDE (VISIBLE) ─── */}
-      <section className="space-y-3">
-        <h2 className="font-display font-black text-lg flex items-center gap-2 px-1">
-          <TrendingUp className="h-5 w-5 text-primary" /> Analyse du match
-        </h2>
+      {/* ─── 2. PARIS SUGGÉRÉS (style image référence) ─── */}
+      {suggestedBets.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-display font-black text-lg flex items-center gap-2 px-1">
+            <Shield className="h-5 w-5 text-success" /> Paris suggérés
+          </h2>
+          <div className="space-y-3">
+            {suggestedBets.map((bet, i) => (
+              <BetCard key={i} bet={bet} />
+            ))}
+          </div>
+          <p className="text-[11px] text-warning flex items-start gap-1.5 px-1">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span className="italic">Ces suggestions sont basées sur l'analyse statistique et ne garantissent aucun résultat. Pariez de manière responsable.</span>
+          </p>
+        </section>
+      )}
 
-        {/* Probabilities */}
-        <div className="grid grid-cols-3 gap-3">
-          <ProbCard label={homeName} value={prediction.home_win_prob} isMax={prediction.home_win_prob >= prediction.draw_prob && prediction.home_win_prob >= prediction.away_win_prob} />
-          <ProbCard label="Nul" value={prediction.draw_prob} isMax={prediction.draw_prob > prediction.home_win_prob && prediction.draw_prob > prediction.away_win_prob} />
-          <ProbCard label={awayName} value={prediction.away_win_prob} isMax={prediction.away_win_prob > prediction.home_win_prob && prediction.away_win_prob > prediction.draw_prob} />
-        </div>
-
-        {/* Key stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Score probable" value={`${prediction.predicted_score_home} - ${prediction.predicted_score_away}`} />
-          <StatCard label="Buts attendus" value={prediction.expected_goals?.toFixed(1) || '?'} />
-          <StatCard label="BTTS" value={`${prediction.btts_prob}%`} />
-          <StatCard label="Over 2.5" value={`${prediction.over_25_prob}%`} />
-        </div>
-
-        {/* Team A analysis */}
-        {report.team_a_analysis && (
-          <ReportSection
-            icon={<Flag className="h-4 w-4 text-primary" />}
-            title={`Analyse ${homeName}`}
-            content={report.team_a_analysis}
-          />
-        )}
-
-        {/* Team B analysis */}
-        {report.team_b_analysis && (
-          <ReportSection
-            icon={<Flag className="h-4 w-4 text-info" />}
-            title={`Analyse ${awayName}`}
-            content={report.team_b_analysis}
-          />
-        )}
-
-        {/* Injuries Impact */}
-        {report.injuries_impact && (
-          <ReportSection
-            icon={<ShieldAlert className="h-4 w-4 text-destructive" />}
-            title="Impact des blessures"
-            content={report.injuries_impact}
-          />
-        )}
-
-        {/* Tactical Analysis */}
-        {report.tactical_analysis && (
-          <ReportSection
-            icon={<Swords className="h-4 w-4 text-warning" />}
-            title="Analyse tactique"
-            content={report.tactical_analysis}
-          />
-        )}
-      </section>
-
-      {/* ─── 3. BOUTON VOIR L'ANALYSE COMPLÈTE ─── */}
+      {/* ─── 3. BOUTON VOIR PLUS ─── */}
       <Button
         variant="outline"
         className="w-full h-12 rounded-2xl gap-2 font-display font-bold text-base"
@@ -131,7 +86,21 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
             transition={{ duration: 0.3 }}
             className="space-y-4 overflow-hidden"
           >
-            {/* Additional stats */}
+            {/* Probabilities */}
+            <div className="grid grid-cols-3 gap-3">
+              <ProbCard label={homeName} value={prediction.home_win_prob} isMax={prediction.home_win_prob >= prediction.draw_prob && prediction.home_win_prob >= prediction.away_win_prob} />
+              <ProbCard label="Nul" value={prediction.draw_prob} isMax={prediction.draw_prob > prediction.home_win_prob && prediction.draw_prob > prediction.away_win_prob} />
+              <ProbCard label={awayName} value={prediction.away_win_prob} isMax={prediction.away_win_prob > prediction.home_win_prob && prediction.away_win_prob > prediction.draw_prob} />
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard label="Score probable" value={`${prediction.predicted_score_home} - ${prediction.predicted_score_away}`} />
+              <StatCard label="Buts attendus" value={prediction.expected_goals?.toFixed(1) || '?'} />
+              <StatCard label="BTTS" value={`${prediction.btts_prob}%`} />
+              <StatCard label="Over 2.5" value={`${prediction.over_25_prob}%`} />
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               <StatCard label="Over 1.5" value={`${prediction.over_15_prob}%`} />
               <StatCard label="Under 2.5" value={`${prediction.under_25_prob}%`} />
@@ -157,21 +126,23 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
               </div>
             </div>
 
-            {/* Summary */}
-            {report.summary && (
-              <ReportSection
-                icon={<TrendingUp className="h-4 w-4 text-primary" />}
-                title="Rapport d'analyse"
-                content={report.summary}
-              />
+            {/* Team analyses */}
+            {report.team_a_analysis && (
+              <ReportSection icon={<Flag className="h-4 w-4 text-primary" />} title={`Analyse ${homeName}`} content={report.team_a_analysis} />
+            )}
+            {report.team_b_analysis && (
+              <ReportSection icon={<Flag className="h-4 w-4 text-info" />} title={`Analyse ${awayName}`} content={report.team_b_analysis} />
             )}
 
-            {/* Probable Lineups */}
+            {report.injuries_impact && (
+              <ReportSection icon={<ShieldAlert className="h-4 w-4 text-destructive" />} title="Impact des blessures" content={report.injuries_impact} />
+            )}
+            {report.tactical_analysis && (
+              <ReportSection icon={<Swords className="h-4 w-4 text-warning" />} title="Analyse tactique" content={report.tactical_analysis} />
+            )}
             {report.probable_lineups && (
               <ReportSection icon={<Users className="h-4 w-4 text-success" />} title="Compositions probables" content={report.probable_lineups} />
             )}
-
-            {/* Context & Stakes */}
             {report.context_stakes && (
               <ReportSection icon={<Target className="h-4 w-4 text-primary" />} title="Enjeu & contexte" content={report.context_stakes} />
             )}
@@ -195,9 +166,7 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
                             f.impact === 'high' ? 'bg-primary/15 text-primary' :
                             f.impact === 'medium' ? 'bg-warning/15 text-warning' :
                             'bg-surface text-muted-foreground'
-                          }`}>
-                            {f.impact}
-                          </Badge>
+                          }`}>{f.impact}</Badge>
                         </div>
                         <p className="text-muted-foreground text-xs leading-relaxed">{f.description}</p>
                       </div>
@@ -207,17 +176,13 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
               </div>
             )}
 
-            {/* Data quality */}
             {report.data_quality_assessment && (
               <ReportSection icon={<Database className="h-4 w-4 text-info" />} title="Qualité des données" content={report.data_quality_assessment} />
             )}
-
-            {/* Confidence Notes */}
             {report.confidence_notes && (
               <ReportSection icon={<FileText className="h-4 w-4 text-muted-foreground" />} title="Notes de confiance" content={report.confidence_notes} />
             )}
 
-            {/* Missing variables */}
             {report.missing_variables?.length > 0 && (
               <div className="glass rounded-3xl p-5 border-warning/20">
                 <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2 text-warning">
@@ -231,7 +196,6 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
               </div>
             )}
 
-            {/* Meta */}
             <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground px-1">
               {analysis.model_version && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {analysis.model_version}</span>}
               {analysis.data_quality_score != null && <span>Qualité : {analysis.data_quality_score}/100</span>}
@@ -247,31 +211,47 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
 
 /* ─── Sub-components ─── */
 
-function BetCard({ index, bet }: { index: number; bet: { type: string; explanation: string; confidence: string } }) {
-  const confidenceConfig = {
-    high: { label: 'Élevée', bg: 'bg-success/15', text: 'text-success', icon: <Shield className="h-3.5 w-3.5" /> },
-    élevée: { label: 'Élevée', bg: 'bg-success/15', text: 'text-success', icon: <Shield className="h-3.5 w-3.5" /> },
-    medium: { label: 'Moyenne', bg: 'bg-warning/15', text: 'text-warning', icon: <Zap className="h-3.5 w-3.5" /> },
-    moyenne: { label: 'Moyenne', bg: 'bg-warning/15', text: 'text-warning', icon: <Zap className="h-3.5 w-3.5" /> },
-    low: { label: 'Faible', bg: 'bg-destructive/15', text: 'text-destructive', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-    faible: { label: 'Faible', bg: 'bg-destructive/15', text: 'text-destructive', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+function BetCard({ bet }: { bet: { type: string; category?: string; explanation: string; confidence: string; probability?: number } }) {
+  const confidenceConfig: Record<string, { label: string; bg: string; text: string }> = {
+    high: { label: 'Sûr', bg: 'bg-primary/15', text: 'text-primary' },
+    élevée: { label: 'Sûr', bg: 'bg-primary/15', text: 'text-primary' },
+    medium: { label: 'Moyen', bg: 'bg-warning/15', text: 'text-warning' },
+    moyenne: { label: 'Moyen', bg: 'bg-warning/15', text: 'text-warning' },
+    low: { label: 'Risqué', bg: 'bg-destructive/15', text: 'text-destructive' },
+    faible: { label: 'Risqué', bg: 'bg-destructive/15', text: 'text-destructive' },
   };
 
-  const conf = confidenceConfig[(bet.confidence || '').toLowerCase() as keyof typeof confidenceConfig]
-    || confidenceConfig.medium;
+  const conf = confidenceConfig[(bet.confidence || '').toLowerCase()] || confidenceConfig.medium;
 
   return (
-    <div className="glass rounded-2xl p-4 flex items-start gap-4">
-      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-        <span className="font-display font-black text-primary text-lg">{index}</span>
+    <div className="glass rounded-2xl p-5 space-y-3">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <Zap className="h-5 w-5 text-primary shrink-0" />
+          <h3 className="font-display font-black text-base">{bet.type}</h3>
+        </div>
+        {bet.probability != null && (
+          <span className="text-sm font-display font-black text-success bg-success/10 px-2.5 py-1 rounded-lg shrink-0">
+            {bet.probability}%
+          </span>
+        )}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-display font-bold text-sm">{bet.type}</p>
-        <p className="text-muted-foreground text-xs mt-0.5 leading-relaxed">{bet.explanation}</p>
+
+      {/* Tags */}
+      <div className="flex flex-wrap gap-2">
+        {bet.category && (
+          <Badge variant="secondary" className="rounded-full text-[11px] font-medium px-3 py-0.5">
+            {bet.category}
+          </Badge>
+        )}
+        <Badge className={`${conf.bg} ${conf.text} border-none rounded-full text-[11px] font-bold px-3 py-0.5`}>
+          {conf.label}
+        </Badge>
       </div>
-      <Badge className={`${conf.bg} ${conf.text} border-none rounded-full px-2.5 py-1 text-[10px] font-bold flex items-center gap-1 shrink-0`}>
-        {conf.icon} {conf.label}
-      </Badge>
+
+      {/* Explanation */}
+      <p className="text-sm text-muted-foreground leading-relaxed">{bet.explanation}</p>
     </div>
   );
 }
