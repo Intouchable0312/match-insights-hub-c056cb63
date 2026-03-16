@@ -1,11 +1,19 @@
 import { DbAnalysis } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Target, AlertTriangle, Database, Clock, ArrowUp, ArrowDown, Minus, Shield, CheckCircle2, Zap } from 'lucide-react';
+import { TrendingUp, Target, AlertTriangle, Database, Clock, ArrowUp, ArrowDown, Minus, Shield, CheckCircle2, Zap, Users, Swords, Activity, Info } from 'lucide-react';
 
-export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
+interface RealAnalysisReportProps {
+  analysis: DbAnalysis;
+  homeTeamName?: string;
+  awayTeamName?: string;
+}
+
+export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: RealAnalysisReportProps) {
   const prediction = analysis.prediction;
   const report = analysis.report;
+  const home = homeTeamName || 'Domicile';
+  const away = awayTeamName || 'Extérieur';
 
   if (!prediction || !report) {
     return (
@@ -21,9 +29,9 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       {/* Probabilities */}
       <div className="grid grid-cols-3 gap-3">
-        <ProbCard label="Dom." value={prediction.home_win_prob} isMax={prediction.home_win_prob === probMax} />
+        <ProbCard label={home} value={prediction.home_win_prob} isMax={prediction.home_win_prob === probMax} />
         <ProbCard label="Nul" value={prediction.draw_prob} isMax={prediction.draw_prob === probMax} />
-        <ProbCard label="Ext." value={prediction.away_win_prob} isMax={prediction.away_win_prob === probMax} />
+        <ProbCard label={away} value={prediction.away_win_prob} isMax={prediction.away_win_prob === probMax} />
       </div>
 
       {/* Stats Grid */}
@@ -45,11 +53,11 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
         <p className="text-xs text-muted-foreground mb-3 font-semibold uppercase tracking-wider">Premier but</p>
         <div className="flex gap-2">
           <div className="flex-1 bg-primary/10 rounded-2xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Domicile</p>
+            <p className="text-[11px] text-muted-foreground mb-1 truncate">{home}</p>
             <p className="font-display font-black text-xl text-primary">{prediction.first_to_score_home}%</p>
           </div>
           <div className="flex-1 bg-surface rounded-2xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Extérieur</p>
+            <p className="text-[11px] text-muted-foreground mb-1 truncate">{away}</p>
             <p className="font-display font-black text-xl">{prediction.first_to_score_away}%</p>
           </div>
           <div className="flex-1 bg-surface/50 rounded-2xl p-3 text-center">
@@ -59,11 +67,11 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
         </div>
       </div>
 
-      {/* Suggested Bets */}
+      {/* Suggested Bets - ALWAYS shown prominently */}
       {report.suggested_bets?.length > 0 && (
-        <div className="glass rounded-3xl p-5 border-success/20">
+        <div className="glass rounded-3xl p-5 border border-success/30 bg-success/5">
           <h3 className="font-display font-bold text-base mb-4 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-success" /> Paris suggérés
+            <Shield className="h-5 w-5 text-success" /> Paris suggérés
           </h3>
           <div className="space-y-3">
             {report.suggested_bets.map((bet: any, i: number) => (
@@ -72,12 +80,12 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08 }}
-                className="bg-surface rounded-2xl p-4 space-y-2"
+                className="bg-background/80 rounded-2xl p-4 space-y-2 border border-border/50"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <ConfidenceIcon confidence={bet.confidence} />
-                    <span className="font-display font-bold text-sm truncate">{bet.selection}</span>
+                    <span className="font-display font-bold text-sm">{bet.selection}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge className={`text-[10px] px-2 py-0.5 rounded-full border-none font-bold ${
@@ -90,7 +98,7 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover border-none text-muted-foreground font-medium">
+                  <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-surface border-none text-muted-foreground font-medium">
                     {bet.bet_type}
                   </Badge>
                   <ConfidenceBadge confidence={bet.confidence} />
@@ -112,6 +120,56 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
         </h3>
         <p className="text-sm text-secondary-foreground leading-relaxed">{report.summary}</p>
       </div>
+
+      {/* Team A Analysis */}
+      {report.team_a_analysis && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> Analyse {home}
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed">{report.team_a_analysis}</p>
+        </div>
+      )}
+
+      {/* Team B Analysis */}
+      {report.team_b_analysis && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Users className="h-4 w-4 text-info" /> Analyse {away}
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed">{report.team_b_analysis}</p>
+        </div>
+      )}
+
+      {/* Tactical Analysis */}
+      {report.tactical_analysis && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Swords className="h-4 w-4 text-warning" /> Analyse tactique
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed">{report.tactical_analysis}</p>
+        </div>
+      )}
+
+      {/* Injuries */}
+      {report.injuries_impact && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-destructive" /> Blessures & Absences
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed">{report.injuries_impact}</p>
+        </div>
+      )}
+
+      {/* Context & Stakes */}
+      {report.context_stakes && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Info className="h-4 w-4 text-info" /> Enjeux & Contexte
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed">{report.context_stakes}</p>
+        </div>
+      )}
 
       {/* Data quality */}
       {report.data_quality_assessment && (
@@ -182,7 +240,7 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
 function ProbCard({ label, value, isMax }: { label: string; value: number; isMax: boolean }) {
   return (
     <div className={`glass rounded-3xl p-5 text-center transition-all ${isMax ? 'bg-primary/5 border-primary/20' : ''}`}>
-      <p className="text-xs text-muted-foreground mb-1 font-semibold">{label}</p>
+      <p className="text-xs text-muted-foreground mb-1 font-semibold truncate">{label}</p>
       <p className={`font-display font-black text-3xl ${isMax ? 'text-primary' : 'text-foreground'}`}>{Math.round(value)}%</p>
     </div>
   );
