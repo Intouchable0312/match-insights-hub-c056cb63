@@ -1,7 +1,7 @@
 import { DbAnalysis } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Target, AlertTriangle, Database, Clock, ArrowUp, ArrowDown, Minus, Shield, CheckCircle2, Zap } from 'lucide-react';
+import { TrendingUp, Target, AlertTriangle, Database, Clock, ArrowUp, ArrowDown, Minus, Users, Swords, Flag, ShieldAlert, FileText } from 'lucide-react';
 
 export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
   const prediction = analysis.prediction;
@@ -59,68 +59,42 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
         </div>
       </div>
 
-      {/* Suggested Bets */}
-      {report.suggested_bets?.length > 0 && (
-        <div className="glass rounded-3xl p-5 border-success/20">
-          <h3 className="font-display font-bold text-base mb-4 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-success" /> Paris suggérés
-          </h3>
-          <div className="space-y-3">
-            {report.suggested_bets.map((bet: any, i: number) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="bg-surface rounded-2xl p-4 space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <ConfidenceIcon confidence={bet.confidence} />
-                    <span className="font-display font-bold text-sm truncate">{bet.selection}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className={`text-[10px] px-2 py-0.5 rounded-full border-none font-bold ${
-                      bet.confidence === 'very_high' ? 'bg-success/15 text-success' :
-                      bet.confidence === 'high' ? 'bg-primary/15 text-primary' :
-                      'bg-warning/15 text-warning'
-                    }`}>
-                      {Math.round(bet.probability)}%
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover border-none text-muted-foreground font-medium">
-                    {bet.bet_type}
-                  </Badge>
-                  <ConfidenceBadge confidence={bet.confidence} />
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{bet.reasoning}</p>
-              </motion.div>
-            ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-3 italic">
-            ⚠️ Ces suggestions sont basées sur l'analyse statistique et ne garantissent aucun résultat. Pariez de manière responsable.
-          </p>
-        </div>
-      )}
-
       {/* Summary */}
       <div className="glass rounded-3xl p-5">
         <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-primary" /> Rapport IA
+          <TrendingUp className="h-4 w-4 text-primary" /> Rapport d'analyse
         </h3>
-        <p className="text-sm text-secondary-foreground leading-relaxed">{report.summary}</p>
+        <p className="text-sm text-secondary-foreground leading-relaxed whitespace-pre-line">{report.summary}</p>
       </div>
 
-      {/* Data quality */}
-      {report.data_quality_assessment && (
-        <div className="glass rounded-3xl p-5">
-          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
-            <Database className="h-4 w-4 text-info" /> Qualité des données
-          </h3>
-          <p className="text-sm text-secondary-foreground leading-relaxed">{report.data_quality_assessment}</p>
-        </div>
+      {/* Team A Analysis */}
+      {report.team_a_analysis && (
+        <ReportSection icon={<Flag className="h-4 w-4 text-primary" />} title="Analyse équipe domicile" content={report.team_a_analysis} />
+      )}
+
+      {/* Team B Analysis */}
+      {report.team_b_analysis && (
+        <ReportSection icon={<Flag className="h-4 w-4 text-info" />} title="Analyse équipe extérieur" content={report.team_b_analysis} />
+      )}
+
+      {/* Injuries Impact */}
+      {report.injuries_impact && (
+        <ReportSection icon={<ShieldAlert className="h-4 w-4 text-destructive" />} title="Impact des blessures" content={report.injuries_impact} />
+      )}
+
+      {/* Tactical Analysis */}
+      {report.tactical_analysis && (
+        <ReportSection icon={<Swords className="h-4 w-4 text-warning" />} title="Analyse tactique" content={report.tactical_analysis} />
+      )}
+
+      {/* Probable Lineups */}
+      {report.probable_lineups && (
+        <ReportSection icon={<Users className="h-4 w-4 text-success" />} title="Compositions probables" content={report.probable_lineups} />
+      )}
+
+      {/* Context & Stakes */}
+      {report.context_stakes && (
+        <ReportSection icon={<Target className="h-4 w-4 text-primary" />} title="Enjeu & contexte" content={report.context_stakes} />
       )}
 
       {/* Key Factors */}
@@ -154,6 +128,26 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
         </div>
       )}
 
+      {/* Data quality */}
+      {report.data_quality_assessment && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Database className="h-4 w-4 text-info" /> Qualité des données
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed whitespace-pre-line">{report.data_quality_assessment}</p>
+        </div>
+      )}
+
+      {/* Confidence Notes */}
+      {report.confidence_notes && (
+        <div className="glass rounded-3xl p-5">
+          <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" /> Notes de confiance
+          </h3>
+          <p className="text-sm text-secondary-foreground leading-relaxed whitespace-pre-line">{report.confidence_notes}</p>
+        </div>
+      )}
+
       {/* Missing variables */}
       {report.missing_variables?.length > 0 && (
         <div className="glass rounded-3xl p-5 border-warning/20">
@@ -179,6 +173,17 @@ export function RealAnalysisReport({ analysis }: { analysis: DbAnalysis }) {
   );
 }
 
+function ReportSection({ icon, title, content }: { icon: React.ReactNode; title: string; content: string }) {
+  return (
+    <div className="glass rounded-3xl p-5">
+      <h3 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+        {icon} {title}
+      </h3>
+      <p className="text-sm text-secondary-foreground leading-relaxed whitespace-pre-line">{content}</p>
+    </div>
+  );
+}
+
 function ProbCard({ label, value, isMax }: { label: string; value: number; isMax: boolean }) {
   return (
     <div className={`glass rounded-3xl p-5 text-center transition-all ${isMax ? 'bg-primary/5 border-primary/20' : ''}`}>
@@ -195,20 +200,4 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
       <p className={`font-display font-black text-xl ${accent ? 'text-primary' : ''}`}>{value}</p>
     </div>
   );
-}
-
-function ConfidenceIcon({ confidence }: { confidence: string }) {
-  if (confidence === 'very_high') return <CheckCircle2 className="h-4 w-4 text-success shrink-0" />;
-  if (confidence === 'high') return <Zap className="h-4 w-4 text-primary shrink-0" />;
-  return <Target className="h-4 w-4 text-warning shrink-0" />;
-}
-
-function ConfidenceBadge({ confidence }: { confidence: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    very_high: { label: 'Très sûr', cls: 'bg-success/15 text-success' },
-    high: { label: 'Sûr', cls: 'bg-primary/15 text-primary' },
-    medium: { label: 'Modéré', cls: 'bg-warning/15 text-warning' },
-  };
-  const c = map[confidence] || map.medium;
-  return <Badge className={`text-[10px] px-2 py-0.5 rounded-full border-none font-bold ${c.cls}`}>{c.label}</Badge>;
 }
