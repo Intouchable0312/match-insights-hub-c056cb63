@@ -2,11 +2,17 @@ import { DbAnalysis } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Target, AlertTriangle, Database, Clock, ArrowUp, ArrowDown, Minus, Shield, CheckCircle2, Zap, Users, Swords, Activity, Info } from 'lucide-react';
+import { BettingPosterDownload } from '@/components/BettingPosterDownload';
 
 interface RealAnalysisReportProps {
   analysis: DbAnalysis;
   homeTeamName?: string;
   awayTeamName?: string;
+  homeTeamLogo?: string | null;
+  awayTeamLogo?: string | null;
+  leagueName?: string;
+  leagueLogo?: string | null;
+  kickoff?: string;
 }
 
 export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: RealAnalysisReportProps) {
