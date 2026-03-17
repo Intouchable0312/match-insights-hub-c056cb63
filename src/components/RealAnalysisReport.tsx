@@ -15,7 +15,7 @@ interface RealAnalysisReportProps {
   kickoff?: string;
 }
 
-export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: RealAnalysisReportProps) {
+export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName, homeTeamLogo, awayTeamLogo, leagueName, leagueLogo, kickoff }: RealAnalysisReportProps) {
   const prediction = analysis.prediction;
   const report = analysis.report;
   const home = homeTeamName || 'Domicile';
