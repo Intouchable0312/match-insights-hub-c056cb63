@@ -2,14 +2,20 @@ import { DbAnalysis } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Target, AlertTriangle, Database, Clock, ArrowUp, ArrowDown, Minus, Shield, CheckCircle2, Zap, Users, Swords, Activity, Info } from 'lucide-react';
+import { BettingPosterDownload } from '@/components/BettingPosterDownload';
 
 interface RealAnalysisReportProps {
   analysis: DbAnalysis;
   homeTeamName?: string;
   awayTeamName?: string;
+  homeTeamLogo?: string | null;
+  awayTeamLogo?: string | null;
+  leagueName?: string;
+  leagueLogo?: string | null;
+  kickoff?: string;
 }
 
-export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: RealAnalysisReportProps) {
+export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName, homeTeamLogo, awayTeamLogo, leagueName, leagueLogo, kickoff }: RealAnalysisReportProps) {
   const prediction = analysis.prediction;
   const report = analysis.report;
   const home = homeTeamName || 'Domicile';
@@ -110,6 +116,25 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName }: Rea
           <p className="text-[10px] text-muted-foreground mt-3 italic">
             ⚠️ Ces suggestions sont basées sur l'analyse statistique et ne garantissent aucun résultat. Pariez de manière responsable.
           </p>
+
+          {/* Download Poster Button */}
+          <div className="mt-4">
+            <BettingPosterDownload
+              homeTeamName={home}
+              awayTeamName={away}
+              homeTeamLogo={homeTeamLogo}
+              awayTeamLogo={awayTeamLogo}
+              leagueName={leagueName || ''}
+              leagueLogo={leagueLogo}
+              kickoff={kickoff || ''}
+              suggestedBets={report.suggested_bets}
+              predictedScoreHome={prediction.predicted_score_home}
+              predictedScoreAway={prediction.predicted_score_away}
+              homeWinProb={prediction.home_win_prob}
+              drawProb={prediction.draw_prob}
+              awayWinProb={prediction.away_win_prob}
+            />
+          </div>
         </div>
       )}
 
