@@ -37,43 +37,55 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function getThemeColors(): { isDark: boolean; bg: string; cardBg: string; text: string; textSec: string; textMuted: string; primary: string; primaryLight: string; success: string; successLight: string; warning: string; warningLight: string; border: string; surface: string; accent: string } {
+function getThemeColors() {
   const isDark = document.documentElement.classList.contains('dark');
   if (isDark) {
     return {
       isDark: true,
-      bg: '#0e1017',
-      cardBg: '#151821',
-      text: '#ebedf2',
-      textSec: '#a0a4b0',
-      textMuted: '#6b6f7e',
-      primary: '#4d7cfa',
-      primaryLight: 'rgba(77,124,250,0.12)',
-      success: '#34c88a',
-      successLight: 'rgba(52,200,138,0.12)',
-      warning: '#f5a623',
-      warningLight: 'rgba(245,166,35,0.12)',
-      border: '#1f2230',
-      surface: '#1a1d28',
-      accent: '#4d7cfa',
+      bg: '#0d0f14',
+      bgGradTop: '#101320',
+      bgGradBottom: '#080a10',
+      cardBg: '#14171f',
+      cardBgAlt: '#181c26',
+      text: '#ebedf4',
+      textSec: '#a3a8b8',
+      textMuted: '#5e6378',
+      primary: '#5b8aff',
+      primaryGlow: 'rgba(91,138,255,0.18)',
+      primarySoft: 'rgba(91,138,255,0.08)',
+      success: '#3dd89c',
+      successGlow: 'rgba(61,216,156,0.18)',
+      successSoft: 'rgba(61,216,156,0.06)',
+      warning: '#ffb347',
+      warningGlow: 'rgba(255,179,71,0.18)',
+      border: '#1e2232',
+      borderLight: '#252a3a',
+      surface: '#191d28',
+      glow: 'rgba(91,138,255,0.06)',
     };
   }
   return {
     isDark: false,
-    bg: '#f5f6fa',
+    bg: '#f0f2f8',
+    bgGradTop: '#f5f7fc',
+    bgGradBottom: '#e8eaf2',
     cardBg: '#ffffff',
-    text: '#1a1e2e',
-    textSec: '#5a5f72',
-    textMuted: '#8a8e9e',
+    cardBgAlt: '#f8f9fc',
+    text: '#141828',
+    textSec: '#4a5068',
+    textMuted: '#7e8498',
     primary: '#3b6ef5',
-    primaryLight: 'rgba(59,110,245,0.1)',
-    success: '#2aaa72',
-    successLight: 'rgba(42,170,114,0.1)',
-    warning: '#d4901a',
-    warningLight: 'rgba(212,144,26,0.1)',
-    border: '#e2e5ee',
-    surface: '#eef0f5',
-    accent: '#3b6ef5',
+    primaryGlow: 'rgba(59,110,245,0.14)',
+    primarySoft: 'rgba(59,110,245,0.06)',
+    success: '#22a86e',
+    successGlow: 'rgba(34,168,110,0.14)',
+    successSoft: 'rgba(34,168,110,0.06)',
+    warning: '#d99418',
+    warningGlow: 'rgba(217,148,24,0.14)',
+    border: '#dde0ea',
+    borderLight: '#e8ebf2',
+    surface: '#eaecf4',
+    glow: 'rgba(59,110,245,0.04)',
   };
 }
 
@@ -83,8 +95,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.lineTo(x + w - r, y);
   ctx.arcTo(x + w, y, x + w, y + r, r);
   ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.lineTo(x + w, y + h - r);
   ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
   ctx.lineTo(x + r, y + h);
   ctx.arcTo(x, y + h, x, y + h - r, r);
@@ -93,15 +103,15 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fillColor: string) {
-  ctx.fillStyle = fillColor;
+function fillRR(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, color: string) {
+  ctx.fillStyle = color;
   roundRect(ctx, x, y, w, h, r);
   ctx.fill();
 }
 
-function drawRoundedRectStroke(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, strokeColor: string, lineWidth: number = 1) {
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = lineWidth;
+function strokeRR(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, color: string, lw = 1) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
   roundRect(ctx, x, y, w, h, r);
   ctx.stroke();
 }
@@ -109,25 +119,25 @@ function drawRoundedRectStroke(ctx: CanvasRenderingContext2D, x: number, y: numb
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
-  let currentLine = '';
+  let cur = '';
   for (const word of words) {
-    const test = currentLine ? `${currentLine} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
+    const test = cur ? `${cur} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && cur) {
+      lines.push(cur);
+      cur = word;
     } else {
-      currentLine = test;
+      cur = test;
     }
   }
-  if (currentLine) lines.push(currentLine);
+  if (cur) lines.push(cur);
   return lines;
 }
 
-function getConfidenceInfo(confidence: string, c: ReturnType<typeof getThemeColors>): { label: string; color: string; bgColor: string } {
+function confInfo(confidence: string, c: ReturnType<typeof getThemeColors>) {
   switch (confidence) {
-    case 'very_high': return { label: 'Très sûr', color: c.success, bgColor: c.successLight };
-    case 'high': return { label: 'Sûr', color: c.primary, bgColor: c.primaryLight };
-    default: return { label: 'Modéré', color: c.warning, bgColor: c.warningLight };
+    case 'very_high': return { label: '★★★ Très sûr', color: c.success, glow: c.successGlow, soft: c.successSoft };
+    case 'high': return { label: '★★ Sûr', color: c.primary, glow: c.primaryGlow, soft: c.primarySoft };
+    default: return { label: '★ Modéré', color: c.warning, glow: c.warningGlow, soft: c.primarySoft };
   }
 }
 
@@ -139,73 +149,86 @@ export function BettingPosterDownload(props: BettingPosterProps) {
     setLoading(true);
     try {
       const c = getThemeColors();
+      // 9:16 format
       const W = 1080;
-      const PAD = 60;
-      const CONTENT_W = W - PAD * 2;
+      const H = 1920;
+      const PAD = 56;
+      const CW = W - PAD * 2;
 
-      // Pre-calculate height
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      ctx.font = '500 24px "DM Sans", sans-serif';
-
-      // Calculate bet cards total height
-      let betsHeight = 0;
-      for (const bet of props.suggestedBets) {
-        const reasonLines = wrapText(ctx, bet.reasoning, CONTENT_W - 80);
-        betsHeight += 80 + reasonLines.length * 30 + 20;
-      }
-
-      const headerHeight = 340;
-      const probsHeight = 130;
-      const betsHeaderHeight = 70;
-      const footerHeight = 80;
-      const H = headerHeight + probsHeight + betsHeaderHeight + betsHeight + footerHeight + 40;
-
       canvas.width = W;
       canvas.height = H;
+      const ctx = canvas.getContext('2d')!;
 
-      // Background
-      drawRoundedRect(ctx, 0, 0, W, H, 0, c.bg);
-
-      // Subtle gradient overlay
-      const grad = ctx.createLinearGradient(0, 0, W, H);
-      grad.addColorStop(0, c.isDark ? 'rgba(77,124,250,0.04)' : 'rgba(59,110,245,0.03)');
-      grad.addColorStop(1, 'transparent');
-      ctx.fillStyle = grad;
+      // ─── Background gradient ───
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+      bgGrad.addColorStop(0, c.bgGradTop);
+      bgGrad.addColorStop(0.5, c.bg);
+      bgGrad.addColorStop(1, c.bgGradBottom);
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      let y = PAD;
+      // Subtle radial glow behind teams
+      const radGrad = ctx.createRadialGradient(W / 2, 420, 50, W / 2, 420, 500);
+      radGrad.addColorStop(0, c.primaryGlow);
+      radGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = radGrad;
+      ctx.fillRect(0, 0, W, H);
 
-      // ANAP branding
-      ctx.font = '900 28px "Nunito", sans-serif';
+      // ─── Top bar ───
+      let y = 56;
+      // "By ANAP"
+      ctx.font = '600 20px "DM Sans", sans-serif';
+      ctx.fillStyle = c.textMuted;
+      ctx.textAlign = 'center';
+      ctx.fillText('By', W / 2 - 40, y + 18);
+      ctx.font = '900 26px "Nunito", sans-serif';
+      ctx.fillStyle = c.primary;
+      ctx.fillText('ANAP', W / 2 + 8, y + 18);
+
+      y += 50;
+
+      // League pill
+      const leagueText = props.leagueName.toUpperCase();
+      ctx.font = '700 16px "DM Sans", sans-serif';
+      const leagueW = ctx.measureText(leagueText).width + 40;
+      fillRR(ctx, (W - leagueW) / 2, y, leagueW, 34, 17, c.primarySoft);
+      strokeRR(ctx, (W - leagueW) / 2, y, leagueW, 34, 17, c.primary + '30');
       ctx.fillStyle = c.primary;
       ctx.textAlign = 'center';
-      ctx.fillText('ANAP', W / 2, y + 22);
-      y += 16;
-
-      // League info
-      ctx.font = '600 22px "DM Sans", sans-serif';
-      ctx.fillStyle = c.textMuted;
-      ctx.fillText(props.leagueName, W / 2, y + 40);
-      y += 50;
+      ctx.fillText(leagueText, W / 2, y + 23);
+      y += 56;
 
       // Date
       const date = new Date(props.kickoff);
-      const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      ctx.font = '500 20px "DM Sans", sans-serif';
+      ctx.font = '500 22px "DM Sans", sans-serif';
       ctx.fillStyle = c.textMuted;
-      ctx.fillText(`${dateStr} · ${timeStr}`, W / 2, y + 24);
-      y += 50;
+      ctx.fillText(`${dateStr}  ·  ${timeStr}`, W / 2, y + 18);
+      y += 54;
 
-      // Teams section with card background
-      const teamsCardY = y;
-      const teamsCardH = 170;
-      drawRoundedRect(ctx, PAD, teamsCardY, CONTENT_W, teamsCardH, 24, c.cardBg);
-      drawRoundedRectStroke(ctx, PAD, teamsCardY, CONTENT_W, teamsCardH, 24, c.border);
+      // ─── Teams hero section ───
+      const heroY = y;
+      const heroH = 260;
+      fillRR(ctx, PAD, heroY, CW, heroH, 32, c.cardBg);
+      strokeRR(ctx, PAD, heroY, CW, heroH, 32, c.border);
 
-      const teamCenterY = teamsCardY + teamsCardH / 2;
-      const logoSize = 72;
+      // Subtle inner gradient
+      const innerGrad = ctx.createLinearGradient(PAD, heroY, PAD + CW, heroY + heroH);
+      innerGrad.addColorStop(0, c.glow);
+      innerGrad.addColorStop(0.5, 'transparent');
+      innerGrad.addColorStop(1, c.glow);
+      ctx.save();
+      roundRect(ctx, PAD, heroY, CW, heroH, 32);
+      ctx.clip();
+      ctx.fillStyle = innerGrad;
+      ctx.fillRect(PAD, heroY, CW, heroH);
+      ctx.restore();
+
+      const teamCY = heroY + heroH / 2;
+      const logoSize = 88;
+      const logoPad = 12;
 
       // Load logos
       let homeLogo: HTMLImageElement | null = null;
@@ -213,164 +236,223 @@ export function BettingPosterDownload(props: BettingPosterProps) {
       try { if (props.homeTeamLogo) homeLogo = await loadImage(props.homeTeamLogo); } catch { }
       try { if (props.awayTeamLogo) awayLogo = await loadImage(props.awayTeamLogo); } catch { }
 
-      // Home team logo + name
-      const homeX = W / 2 - 180;
+      // Home team
+      const homeX = W / 2 - 190;
       if (homeLogo) {
-        const logoX = homeX - logoSize / 2;
-        const logoY = teamCenterY - logoSize / 2 - 10;
-        drawRoundedRect(ctx, logoX - 8, logoY - 8, logoSize + 16, logoSize + 16, 16, c.surface);
-        ctx.drawImage(homeLogo, logoX, logoY, logoSize, logoSize);
+        const lx = homeX - logoSize / 2;
+        const ly = teamCY - logoSize / 2 - 16;
+        fillRR(ctx, lx - logoPad, ly - logoPad, logoSize + logoPad * 2, logoSize + logoPad * 2, 24, c.surface);
+        ctx.drawImage(homeLogo, lx, ly, logoSize, logoSize);
       } else {
-        ctx.font = '900 32px "Nunito", sans-serif';
+        fillRR(ctx, homeX - 48, teamCY - 48 - 16, 96, 96, 24, c.surface);
+        ctx.font = '900 38px "Nunito", sans-serif';
         ctx.fillStyle = c.text;
         ctx.textAlign = 'center';
-        ctx.fillText(props.homeTeamName.slice(0, 3).toUpperCase(), homeX, teamCenterY - 8);
+        ctx.fillText(props.homeTeamName.slice(0, 3).toUpperCase(), homeX, teamCY - 4);
       }
-      ctx.font = '700 20px "Nunito", sans-serif';
+      ctx.font = '700 22px "Nunito", sans-serif';
       ctx.fillStyle = c.text;
       ctx.textAlign = 'center';
-      ctx.fillText(props.homeTeamName, homeX, teamCenterY + logoSize / 2 + 14);
+      const homeName = props.homeTeamName.length > 14 ? props.homeTeamName.slice(0, 13) + '…' : props.homeTeamName;
+      ctx.fillText(homeName, homeX, teamCY + logoSize / 2 + 20);
 
-      // VS / Score
-      ctx.font = '900 36px "Nunito", sans-serif';
-      ctx.fillStyle = c.primary;
-      ctx.textAlign = 'center';
+      // Score prédit au centre
       if (props.predictedScoreHome != null && props.predictedScoreAway != null) {
-        ctx.fillText(`${props.predictedScoreHome} - ${props.predictedScoreAway}`, W / 2, teamCenterY + 4);
-        ctx.font = '500 14px "DM Sans", sans-serif';
+        // Score glow
+        const scoreGrad = ctx.createRadialGradient(W / 2, teamCY - 4, 10, W / 2, teamCY - 4, 80);
+        scoreGrad.addColorStop(0, c.primaryGlow);
+        scoreGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = scoreGrad;
+        ctx.fillRect(W / 2 - 80, teamCY - 50, 160, 80);
+
+        ctx.font = '900 52px "Nunito", sans-serif';
+        ctx.fillStyle = c.primary;
+        ctx.textAlign = 'center';
+        ctx.fillText(`${props.predictedScoreHome} - ${props.predictedScoreAway}`, W / 2, teamCY + 8);
+        ctx.font = '600 15px "DM Sans", sans-serif';
         ctx.fillStyle = c.textMuted;
-        ctx.fillText('Score prédit', W / 2, teamCenterY + 24);
+        ctx.fillText('SCORE PRÉDIT', W / 2, teamCY + 32);
       } else {
-        ctx.fillText('VS', W / 2, teamCenterY + 8);
+        ctx.font = '900 44px "Nunito", sans-serif';
+        ctx.fillStyle = c.primary;
+        ctx.textAlign = 'center';
+        ctx.fillText('VS', W / 2, teamCY + 12);
       }
 
-      // Away team logo + name
-      const awayX = W / 2 + 180;
+      // Away team
+      const awayX = W / 2 + 190;
       if (awayLogo) {
-        const logoX = awayX - logoSize / 2;
-        const logoY = teamCenterY - logoSize / 2 - 10;
-        drawRoundedRect(ctx, logoX - 8, logoY - 8, logoSize + 16, logoSize + 16, 16, c.surface);
-        ctx.drawImage(awayLogo, logoX, logoY, logoSize, logoSize);
+        const lx = awayX - logoSize / 2;
+        const ly = teamCY - logoSize / 2 - 16;
+        fillRR(ctx, lx - logoPad, ly - logoPad, logoSize + logoPad * 2, logoSize + logoPad * 2, 24, c.surface);
+        ctx.drawImage(awayLogo, lx, ly, logoSize, logoSize);
       } else {
-        ctx.font = '900 32px "Nunito", sans-serif';
+        fillRR(ctx, awayX - 48, teamCY - 48 - 16, 96, 96, 24, c.surface);
+        ctx.font = '900 38px "Nunito", sans-serif';
         ctx.fillStyle = c.text;
         ctx.textAlign = 'center';
-        ctx.fillText(props.awayTeamName.slice(0, 3).toUpperCase(), awayX, teamCenterY - 8);
+        ctx.fillText(props.awayTeamName.slice(0, 3).toUpperCase(), awayX, teamCY - 4);
       }
-      ctx.font = '700 20px "Nunito", sans-serif';
+      ctx.font = '700 22px "Nunito", sans-serif';
       ctx.fillStyle = c.text;
       ctx.textAlign = 'center';
-      ctx.fillText(props.awayTeamName, awayX, teamCenterY + logoSize / 2 + 14);
+      const awayName = props.awayTeamName.length > 14 ? props.awayTeamName.slice(0, 13) + '…' : props.awayTeamName;
+      ctx.fillText(awayName, awayX, teamCY + logoSize / 2 + 20);
 
-      y = teamsCardY + teamsCardH + 24;
+      y = heroY + heroH + 28;
 
-      // Probabilities row
+      // ─── Probabilities ───
       if (props.homeWinProb != null) {
-        const probW = (CONTENT_W - 24) / 3;
-        const probH = 80;
+        const probGap = 14;
+        const probW = (CW - probGap * 2) / 3;
+        const probH = 90;
         const probs = [
-          { label: props.homeTeamName, value: `${Math.round(props.homeWinProb)}%` },
-          { label: 'Nul', value: `${Math.round(props.drawProb || 0)}%` },
-          { label: props.awayTeamName, value: `${Math.round(props.awayWinProb || 0)}%` },
+          { label: props.homeTeamName, value: props.homeWinProb },
+          { label: 'Nul', value: props.drawProb || 0 },
+          { label: props.awayTeamName, value: props.awayWinProb || 0 },
         ];
-        const maxProb = Math.max(props.homeWinProb, props.drawProb || 0, props.awayWinProb || 0);
+        const maxProb = Math.max(...probs.map(p => p.value));
 
         probs.forEach((p, i) => {
-          const px = PAD + i * (probW + 12);
-          const isMax = parseFloat(p.value) === Math.round(maxProb);
-          drawRoundedRect(ctx, px, y, probW, probH, 16, isMax ? c.primaryLight : c.cardBg);
-          drawRoundedRectStroke(ctx, px, y, probW, probH, 16, isMax ? c.primary + '40' : c.border);
+          const px = PAD + i * (probW + probGap);
+          const isMax = p.value === maxProb;
 
-          ctx.font = '500 14px "DM Sans", sans-serif';
+          fillRR(ctx, px, y, probW, probH, 20, isMax ? c.primaryGlow : c.cardBg);
+          strokeRR(ctx, px, y, probW, probH, 20, isMax ? c.primary + '50' : c.border);
+
+          if (isMax) {
+            // Glow effect
+            const gGrad = ctx.createRadialGradient(px + probW / 2, y + probH / 2, 10, px + probW / 2, y + probH / 2, probW / 2);
+            gGrad.addColorStop(0, c.primaryGlow);
+            gGrad.addColorStop(1, 'transparent');
+            ctx.save();
+            roundRect(ctx, px, y, probW, probH, 20);
+            ctx.clip();
+            ctx.fillStyle = gGrad;
+            ctx.fillRect(px, y, probW, probH);
+            ctx.restore();
+          }
+
+          ctx.font = '500 15px "DM Sans", sans-serif';
           ctx.fillStyle = c.textMuted;
           ctx.textAlign = 'center';
-          const labelText = p.label.length > 12 ? p.label.slice(0, 11) + '…' : p.label;
-          ctx.fillText(labelText, px + probW / 2, y + 28);
+          const lbl = p.label.length > 12 ? p.label.slice(0, 11) + '…' : p.label;
+          ctx.fillText(lbl, px + probW / 2, y + 30);
 
-          ctx.font = '900 28px "Nunito", sans-serif';
+          ctx.font = '900 32px "Nunito", sans-serif';
           ctx.fillStyle = isMax ? c.primary : c.text;
-          ctx.fillText(p.value, px + probW / 2, y + 60);
+          ctx.fillText(`${Math.round(p.value)}%`, px + probW / 2, y + 68);
         });
-        y += probH + 24;
+        y += probH + 28;
       }
 
-      // Bets header
-      ctx.font = '800 26px "Nunito", sans-serif';
+      // ─── Separator line ───
+      ctx.strokeStyle = c.border;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(PAD + 40, y);
+      ctx.lineTo(W - PAD - 40, y);
+      ctx.stroke();
+      y += 28;
+
+      // ─── Bets header ───
+      ctx.font = '900 30px "Nunito", sans-serif';
       ctx.fillStyle = c.success;
       ctx.textAlign = 'left';
-      ctx.fillText('🛡️  Paris suggérés', PAD + 8, y + 28);
-      y += 50;
+      ctx.fillText('🎯  PARIS SUGGÉRÉS', PAD + 12, y + 28);
+      y += 56;
 
-      // Bet cards
+      // ─── Bet cards ───
+      ctx.font = '500 20px "DM Sans", sans-serif';
       for (const bet of props.suggestedBets) {
-        const conf = getConfidenceInfo(bet.confidence, c);
-        ctx.font = '500 24px "DM Sans", sans-serif';
-        const reasonLines = wrapText(ctx, bet.reasoning, CONTENT_W - 80);
-        const cardH = 80 + reasonLines.length * 30;
+        const conf = confInfo(bet.confidence, c);
+        ctx.font = '500 20px "DM Sans", sans-serif';
+        const reasonLines = wrapText(ctx, bet.reasoning, CW - 72);
+        const hasReasoning = reasonLines.length > 0 && reasonLines[0].length > 0;
+        const cardH = hasReasoning ? 100 + reasonLines.length * 26 : 92;
 
-        drawRoundedRect(ctx, PAD, y, CONTENT_W, cardH, 20, c.cardBg);
-        drawRoundedRectStroke(ctx, PAD, y, CONTENT_W, cardH, 20, c.border);
+        // Card bg with subtle gradient
+        fillRR(ctx, PAD, y, CW, cardH, 24, c.cardBg);
 
-        // Left accent stripe
-        ctx.fillStyle = conf.color;
-        roundRect(ctx, PAD, y, 5, cardH, 20);
-        ctx.fill();
-        // Redraw the card to clip the stripe properly
+        // Left accent bar (clipped)
         ctx.save();
-        roundRect(ctx, PAD, y, 6, cardH, 0);
+        roundRect(ctx, PAD, y, 7, cardH, 24);
         ctx.clip();
         ctx.fillStyle = conf.color;
-        ctx.fillRect(PAD, y, 6, cardH);
+        ctx.fillRect(PAD, y, 7, cardH);
         ctx.restore();
+        // Also fill the non-rounded part
+        ctx.fillStyle = conf.color;
+        ctx.fillRect(PAD, y + 12, 7, cardH - 24);
 
-        // Selection name
-        ctx.font = '700 22px "Nunito", sans-serif';
+        // Outer glow border
+        strokeRR(ctx, PAD, y, CW, cardH, 24, conf.color + '25', 1.5);
+
+        // Top row: selection + probability pill
+        const innerLeft = PAD + 28;
+        ctx.font = '800 22px "Nunito", sans-serif';
         ctx.fillStyle = c.text;
         ctx.textAlign = 'left';
-        ctx.fillText(bet.selection, PAD + 24, y + 30);
+        ctx.fillText(bet.selection, innerLeft, y + 34);
 
-        // Badges
+        // Probability pill (right side)
         const probText = `${Math.round(bet.probability)}%`;
-        ctx.font = '700 16px "DM Sans", sans-serif';
-        const probW = ctx.measureText(probText).width + 20;
-        const badgeX = W - PAD - probW - 16;
-        drawRoundedRect(ctx, badgeX, y + 14, probW, 28, 14, conf.bgColor);
+        ctx.font = '800 18px "Nunito", sans-serif';
+        const pillTextW = ctx.measureText(probText).width;
+        const pillW = pillTextW + 28;
+        const pillH = 32;
+        const pillX = W - PAD - pillW - 18;
+        const pillY = y + 14;
+        fillRR(ctx, pillX, pillY, pillW, pillH, pillH / 2, conf.glow);
+        strokeRR(ctx, pillX, pillY, pillW, pillH, pillH / 2, conf.color + '40');
         ctx.fillStyle = conf.color;
         ctx.textAlign = 'center';
-        ctx.fillText(probText, badgeX + probW / 2, y + 33);
+        ctx.fillText(probText, pillX + pillW / 2, pillY + 22);
 
-        // Bet type + confidence label
+        // Second row: bet type + confidence badge
         ctx.font = '600 16px "DM Sans", sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillStyle = c.textMuted;
-        const typeText = `${bet.bet_type} · ${conf.label}`;
-        ctx.fillText(typeText, PAD + 24, y + 56);
 
-        // Reasoning
-        ctx.font = '500 18px "DM Sans", sans-serif';
+        // Bet type chip
+        const btText = bet.bet_type;
+        ctx.font = '600 15px "DM Sans", sans-serif';
+        const btW = ctx.measureText(btText).width + 20;
+        fillRR(ctx, innerLeft, y + 48, btW, 26, 13, c.surface);
         ctx.fillStyle = c.textSec;
-        let rY = y + 76;
-        for (const line of reasonLines) {
-          ctx.fillText(line, PAD + 24, rY);
-          rY += 28;
+        ctx.fillText(btText, innerLeft + 10, y + 66);
+
+        // Confidence chip
+        const confText = conf.label;
+        ctx.font = '700 14px "DM Sans", sans-serif';
+        const confW = ctx.measureText(confText).width + 20;
+        fillRR(ctx, innerLeft + btW + 8, y + 48, confW, 26, 13, conf.glow);
+        ctx.fillStyle = conf.color;
+        ctx.fillText(confText, innerLeft + btW + 18, y + 66);
+
+        // Reasoning text
+        if (hasReasoning) {
+          ctx.font = '500 18px "DM Sans", sans-serif';
+          ctx.fillStyle = c.textSec;
+          let rY = y + 92;
+          for (const line of reasonLines) {
+            ctx.fillText(line, innerLeft, rY);
+            rY += 26;
+          }
         }
 
-        y += cardH + 14;
+        y += cardH + 16;
       }
 
-      y += 10;
+      // ─── Footer ───
+      y = Math.max(y + 20, H - 90);
 
-      // Footer
-      ctx.font = '500 16px "DM Sans", sans-serif';
+      // Disclaimer
+      ctx.font = '500 17px "DM Sans", sans-serif';
       ctx.fillStyle = c.textMuted;
       ctx.textAlign = 'center';
-      ctx.fillText('⚠️ Analyse statistique · Pariez de manière responsable', W / 2, y + 16);
+      ctx.fillText('⚠️  Analyse statistique · Pariez de manière responsable', W / 2, y + 20);
 
-      ctx.font = '600 14px "DM Sans", sans-serif';
-      ctx.fillStyle = c.primary + '80';
-      ctx.fillText('Généré par ANAP · anap.lovable.app', W / 2, y + 42);
-
-      // Download
+      // ─── Download ───
       const link = document.createElement('a');
       link.download = `ANAP_${props.homeTeamName}_vs_${props.awayTeamName}.png`.replace(/\s+/g, '_');
       link.href = canvas.toDataURL('image/png');
