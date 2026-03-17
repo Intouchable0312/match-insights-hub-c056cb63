@@ -116,6 +116,25 @@ export function RealAnalysisReport({ analysis, homeTeamName, awayTeamName, homeT
           <p className="text-[10px] text-muted-foreground mt-3 italic">
             ⚠️ Ces suggestions sont basées sur l'analyse statistique et ne garantissent aucun résultat. Pariez de manière responsable.
           </p>
+
+          {/* Download Poster Button */}
+          <div className="mt-4">
+            <BettingPosterDownload
+              homeTeamName={home}
+              awayTeamName={away}
+              homeTeamLogo={homeTeamLogo}
+              awayTeamLogo={awayTeamLogo}
+              leagueName={leagueName || ''}
+              leagueLogo={leagueLogo}
+              kickoff={kickoff || ''}
+              suggestedBets={report.suggested_bets}
+              predictedScoreHome={prediction.predicted_score_home}
+              predictedScoreAway={prediction.predicted_score_away}
+              homeWinProb={prediction.home_win_prob}
+              drawProb={prediction.draw_prob}
+              awayWinProb={prediction.away_win_prob}
+            />
+          </div>
         </div>
       )}
 
