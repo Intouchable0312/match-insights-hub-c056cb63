@@ -238,7 +238,18 @@ export default function MatchDetail() {
 
         {/* Analysis Content */}
         {isAnalyzing && <AnalysisLoader steps={steps} progress={progress} />}
-        {analysis && !isAnalyzing && <RealAnalysisReport analysis={analysis} homeTeamName={match.home_team_name} awayTeamName={match.away_team_name} />}
+        {analysis && !isAnalyzing && (
+          <RealAnalysisReport
+            analysis={analysis}
+            homeTeamName={match.home_team_name}
+            awayTeamName={match.away_team_name}
+            homeTeamLogo={match.home_team_logo}
+            awayTeamLogo={match.away_team_logo}
+            leagueName={match.league_name}
+            leagueLogo={match.league_logo}
+            kickoff={match.kickoff}
+          />
+        )}
       </main>
     </div>
   );
