@@ -969,6 +969,9 @@ serve(async (req) => {
     check(!!playersTxt);
     check(!!espnMatchDetails);
     check(!!injuriesNews);
+    check(!!flashScoreFormTxt);
+    check(!!flashScoreAbsTxt);
+    check(!!flashScorePreviewTxt);
 
     console.log(`\n📊 ${srcCount} data sources collected`);
 
