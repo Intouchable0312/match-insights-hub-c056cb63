@@ -1009,6 +1009,15 @@ ${standingsTxt}
 ══ FORME RÉCENTE & SÉRIES ══
 ${recentFormTxt}
 
+══ FLASHSCORE - FORME DÉTAILLÉE (6 DERNIERS MATCHS) ══
+${flashScoreFormTxt || "Non disponible"}
+
+══ FLASHSCORE - ABSENCES & BLESSURES ══
+${flashScoreAbsTxt || "Non disponible"}
+
+══ FLASHSCORE - APERÇU DU MATCH ══
+${flashScorePreviewTxt || "Non disponible"}
+
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
 
@@ -1040,7 +1049,8 @@ ${teamInfoTxt}
 - Probabilités en 0-100. home+draw+away=100
 - Utilise TOUJOURS "${HOME}" et "${AWAY}" dans tes textes, JAMAIS "domicile"/"extérieur"
 - Tu DOIS fournir entre 3 et 6 suggested_bets avec des raisonnements détaillés
-- Analyse TOUTES les données disponibles (stats, compos, effectifs, météo, calendrier)
+- Analyse TOUTES les données disponibles (stats, compos, effectifs, météo, calendrier, FlashScore)
+- Les données FlashScore (forme, absences) sont PRIORITAIRES pour évaluer la dynamique actuelle
 - data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE`;
 
     console.log("🤖 Calling AI...");
