@@ -100,22 +100,81 @@ export async function getAnalysis(matchId: string): Promise<DbAnalysis | null> {
 
 // League priority mapping (API-Football IDs)
 const LEAGUE_PRIORITIES: Record<number, number> = {
+  1: 0,     // World Cup
   2: 0,     // Champions League
-  61: 1,    // Ligue 1
-  39: 1,    // Premier League
-  140: 1,   // La Liga
-  135: 1,   // Serie A
-  78: 1,    // Bundesliga
-  3: 2,     // Europa League
-  71: 3,    // Brazilian Serie A
-  253: 4,   // MLS
-  88: 5,    // Eredivisie
-  94: 5,    // Primeira Liga
+  3: 1,     // Europa League
+  848: 1,   // Conference League
+  32: 1,    // UEFA WC Qualifiers
+  309: 2,   // Women's Champions League
+  13: 2,    // Copa Libertadores
+  11: 2,    // Copa Sudamericana
+  12: 2,    // CAF Champions League
+  16: 2,    // CONCACAF Champions Cup
+  61: 3,    // Ligue 1
+  39: 3,    // Premier League
+  140: 3,   // La Liga
+  135: 3,   // Serie A
+  78: 3,    // Bundesliga
+  66: 4,    // Coupe de France
+  45: 4,    // FA Cup
+  46: 4,    // EFL Cup
+  143: 4,   // Copa del Rey
+  137: 4,   // Coppa Italia
+  81: 4,    // DFB Pokal
+  147: 4,   // Belgian Cup
+  180: 4,   // Scottish FA Cup
+  63: 5,    // Ligue 2
   40: 5,    // Championship
-  203: 6,   // Super Lig
-  144: 6,   // Belgian Pro League
-  179: 7,   // Scottish Premiership
-  63: 7,    // Ligue 2
+  79: 5,    // Bundesliga 2
+  141: 5,   // Liga Segunda
+  136: 5,   // Serie B
+  94: 5,    // Liga Portugal
+  95: 5,    // Portugal Segunda Liga
+  88: 5,    // Eredivisie
+  144: 5,   // Belgian Pro League
+  203: 6,   // Süper Lig
+  179: 6,   // Scottish Premiership
+  253: 6,   // MLS
+  71: 6,    // Brazilian Série A
+  262: 6,   // Liga MX
+  128: 6,   // Argentine Primera
+  207: 7,   // Swiss Super League
+  106: 7,   // Ekstraklasa
+  120: 7,   // Danish Superliga
+  113: 7,   // Allsvenskan
+  103: 7,   // Eliteserien
+  218: 7,   // Austrian Bundesliga
+  197: 7,   // Greek Super League
+  345: 7,   // Czech First League
+  283: 7,   // Romanian Liga I
+  333: 7,   // Ukrainian Premier League
+  98: 8,    // J-League
+  292: 8,   // K-League
+  169: 8,   // Chinese Super League
+  188: 8,   // A-League
+  239: 8,   // Colombian Primera A
+  265: 8,   // Chilean Primera
+  242: 8,   // Ecuadorian Serie A
+  249: 8,   // Paraguayan Primera
+  210: 8,   // Croatian HNL
+  271: 8,   // Hungarian NB I
+  286: 8,   // Serbian Super Liga
+  172: 8,   // Bulgarian First League
+  225: 9,   // Bosnian Premijer Liga
+  318: 9,   // Cypriot Division 1
+  329: 9,   // Estonian Meistriliiga
+  244: 9,   // Finnish Veikkausliiga
+  327: 9,   // Georgian Erovnuli Liga
+  370: 9,   // Azerbaijani Premyer Liqası
+  353: 9,   // Irish Premier Division
+  365: 9,   // Latvian Virsliga
+  362: 9,   // Lithuanian A Lyga
+  374: 9,   // Luxembourg Division Nationale
+  393: 9,   // Maltese Premier League
+  408: 9,   // Northern Irish Premiership
+  332: 9,   // Slovak Super Liga
+  373: 9,   // Slovenian PrvaLiga
+  110: 9,   // Welsh Premier League
 };
 
 export function getLeaguePriority(leagueId: number): number {

@@ -8,22 +8,134 @@ const corsHeaders = {
 
 // ESPN league slugs mapped to our internal league IDs + metadata
 const ESPN_LEAGUES = [
-  { slug: "fra.1", leagueId: 61, name: "Ligue 1", country: "France", flag: "https://media.api-sports.io/flags/fr.svg" },
-  { slug: "eng.1", leagueId: 39, name: "Premier League", country: "England", flag: "https://media.api-sports.io/flags/gb.svg" },
-  { slug: "esp.1", leagueId: 140, name: "La Liga", country: "Spain", flag: "https://media.api-sports.io/flags/es.svg" },
-  { slug: "ita.1", leagueId: 135, name: "Serie A", country: "Italy", flag: "https://media.api-sports.io/flags/it.svg" },
+  // 🇩🇪 Germany
   { slug: "ger.1", leagueId: 78, name: "Bundesliga", country: "Germany", flag: "https://media.api-sports.io/flags/de.svg" },
-  { slug: "uefa.champions", leagueId: 2, name: "Champions League", country: "Europe", flag: null },
-  { slug: "uefa.europa", leagueId: 3, name: "Europa League", country: "Europe", flag: null },
-  { slug: "por.1", leagueId: 94, name: "Primeira Liga", country: "Portugal", flag: "https://media.api-sports.io/flags/pt.svg" },
-  { slug: "ned.1", leagueId: 88, name: "Eredivisie", country: "Netherlands", flag: "https://media.api-sports.io/flags/nl.svg" },
-  { slug: "bel.1", leagueId: 144, name: "Jupiler Pro League", country: "Belgium", flag: "https://media.api-sports.io/flags/be.svg" },
-  { slug: "tur.1", leagueId: 203, name: "Super Lig", country: "Turkey", flag: "https://media.api-sports.io/flags/tr.svg" },
-  { slug: "sco.1", leagueId: 179, name: "Premiership", country: "Scotland", flag: "https://media.api-sports.io/flags/gb-sct.svg" },
-  { slug: "usa.1", leagueId: 253, name: "Major League Soccer", country: "USA", flag: "https://media.api-sports.io/flags/us.svg" },
-  { slug: "bra.1", leagueId: 71, name: "Brasileirão", country: "Brazil", flag: "https://media.api-sports.io/flags/br.svg" },
+  { slug: "ger.2", leagueId: 79, name: "Bundesliga 2", country: "Germany", flag: "https://media.api-sports.io/flags/de.svg" },
+  { slug: "ger.dfb_pokal", leagueId: 81, name: "DFB Pokal", country: "Germany", flag: "https://media.api-sports.io/flags/de.svg" },
+  // 🏴󠁧󠁢󠁥󠁮󠁧󠁿 England
+  { slug: "eng.1", leagueId: 39, name: "Premier League", country: "England", flag: "https://media.api-sports.io/flags/gb.svg" },
   { slug: "eng.2", leagueId: 40, name: "Championship", country: "England", flag: "https://media.api-sports.io/flags/gb.svg" },
+  { slug: "eng.league_cup", leagueId: 46, name: "EFL Cup", country: "England", flag: "https://media.api-sports.io/flags/gb.svg" },
+  { slug: "eng.fa", leagueId: 45, name: "FA Cup", country: "England", flag: "https://media.api-sports.io/flags/gb.svg" },
+  // 🇦🇷 Argentina
+  { slug: "arg.1", leagueId: 128, name: "Primera División", country: "Argentina", flag: "https://media.api-sports.io/flags/ar.svg" },
+  // 🇦🇺 Australia
+  { slug: "aus.1", leagueId: 188, name: "A-League", country: "Australia", flag: "https://media.api-sports.io/flags/au.svg" },
+  // 🇦🇹 Austria
+  { slug: "aut.1", leagueId: 218, name: "Bundesliga", country: "Austria", flag: "https://media.api-sports.io/flags/at.svg" },
+  // 🇦🇿 Azerbaijan
+  { slug: "aze.1", leagueId: 370, name: "Premyer Liqası", country: "Azerbaijan", flag: "https://media.api-sports.io/flags/az.svg" },
+  // 🇧🇪 Belgium
+  { slug: "bel.1", leagueId: 144, name: "Jupiler Pro League", country: "Belgium", flag: "https://media.api-sports.io/flags/be.svg" },
+  { slug: "bel.cup", leagueId: 147, name: "Coupe de Belgique", country: "Belgium", flag: "https://media.api-sports.io/flags/be.svg" },
+  // 🇧🇦 Bosnia
+  { slug: "bih.1", leagueId: 225, name: "Premijer Liga", country: "Bosnia", flag: "https://media.api-sports.io/flags/ba.svg" },
+  // 🇧🇷 Brazil
+  { slug: "bra.1", leagueId: 71, name: "Série A", country: "Brazil", flag: "https://media.api-sports.io/flags/br.svg" },
+  // 🇧🇬 Bulgaria
+  { slug: "bul.1", leagueId: 172, name: "First League", country: "Bulgaria", flag: "https://media.api-sports.io/flags/bg.svg" },
+  // 🇨🇱 Chile
+  { slug: "chi.1", leagueId: 265, name: "Primera División", country: "Chile", flag: "https://media.api-sports.io/flags/cl.svg" },
+  // 🇨🇳 China
+  { slug: "chn.1", leagueId: 169, name: "Super League", country: "China", flag: "https://media.api-sports.io/flags/cn.svg" },
+  // 🇨🇾 Cyprus
+  { slug: "cyp.1", leagueId: 318, name: "Division 1", country: "Cyprus", flag: "https://media.api-sports.io/flags/cy.svg" },
+  // 🇨🇴 Colombia
+  { slug: "col.1", leagueId: 239, name: "Primera A", country: "Colombia", flag: "https://media.api-sports.io/flags/co.svg" },
+  // 🇰🇷 South Korea
+  { slug: "kor.1", leagueId: 292, name: "K-League 1", country: "South Korea", flag: "https://media.api-sports.io/flags/kr.svg" },
+  // 🇭🇷 Croatia
+  { slug: "cro.1", leagueId: 210, name: "HNL", country: "Croatia", flag: "https://media.api-sports.io/flags/hr.svg" },
+  // 🇩🇰 Denmark
+  { slug: "den.1", leagueId: 120, name: "Superliga", country: "Denmark", flag: "https://media.api-sports.io/flags/dk.svg" },
+  // 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland
+  { slug: "sco.1", leagueId: 179, name: "Premiership", country: "Scotland", flag: "https://media.api-sports.io/flags/gb-sct.svg" },
+  { slug: "sco.fa", leagueId: 180, name: "FA Cup", country: "Scotland", flag: "https://media.api-sports.io/flags/gb-sct.svg" },
+  // 🇪🇨 Ecuador
+  { slug: "ecu.1", leagueId: 242, name: "Serie A", country: "Ecuador", flag: "https://media.api-sports.io/flags/ec.svg" },
+  // 🇪🇸 Spain
+  { slug: "esp.1", leagueId: 140, name: "La Liga", country: "Spain", flag: "https://media.api-sports.io/flags/es.svg" },
+  { slug: "esp.2", leagueId: 141, name: "Liga Segunda", country: "Spain", flag: "https://media.api-sports.io/flags/es.svg" },
+  { slug: "esp.copa_del_rey", leagueId: 143, name: "Copa del Rey", country: "Spain", flag: "https://media.api-sports.io/flags/es.svg" },
+  // 🇪🇪 Estonia
+  { slug: "est.1", leagueId: 329, name: "Meistriliiga", country: "Estonia", flag: "https://media.api-sports.io/flags/ee.svg" },
+  // 🇺🇸 USA
+  { slug: "usa.1", leagueId: 253, name: "MLS", country: "USA", flag: "https://media.api-sports.io/flags/us.svg" },
+  // 🇪🇺 UEFA
+  { slug: "uefa.champions", leagueId: 2, name: "Ligue des Champions", country: "Europe", flag: null },
+  { slug: "uefa.europa", leagueId: 3, name: "Ligue Europa", country: "Europe", flag: null },
+  { slug: "uefa.europa.conf", leagueId: 848, name: "Ligue Conférence", country: "Europe", flag: null },
+  { slug: "uefa.champions.women", leagueId: 309, name: "Ligue des Champions F", country: "Europe", flag: null },
+  // 🇫🇮 Finland
+  { slug: "fin.1", leagueId: 244, name: "Veikkausliiga", country: "Finland", flag: "https://media.api-sports.io/flags/fi.svg" },
+  // 🇫🇷 France
+  { slug: "fra.1", leagueId: 61, name: "Ligue 1", country: "France", flag: "https://media.api-sports.io/flags/fr.svg" },
   { slug: "fra.2", leagueId: 63, name: "Ligue 2", country: "France", flag: "https://media.api-sports.io/flags/fr.svg" },
+  { slug: "fra.coupe_de_france", leagueId: 66, name: "Coupe de France", country: "France", flag: "https://media.api-sports.io/flags/fr.svg" },
+  // 🇬🇪 Georgia
+  { slug: "geo.1", leagueId: 327, name: "Erovnuli Liga", country: "Georgia", flag: "https://media.api-sports.io/flags/ge.svg" },
+  // 🇬🇷 Greece
+  { slug: "gre.1", leagueId: 197, name: "Super League", country: "Greece", flag: "https://media.api-sports.io/flags/gr.svg" },
+  // 🇭🇺 Hungary
+  { slug: "hun.1", leagueId: 271, name: "NB I", country: "Hungary", flag: "https://media.api-sports.io/flags/hu.svg" },
+  // 🌍 International / Continental
+  { slug: "caf.champions", leagueId: 12, name: "CAF Champions League", country: "Africa", flag: null },
+  { slug: "conmebol.libertadores", leagueId: 13, name: "Copa Libertadores", country: "South America", flag: null },
+  { slug: "conmebol.sudamericana", leagueId: 11, name: "Copa Sudamericana", country: "South America", flag: null },
+  { slug: "concacaf.champions", leagueId: 16, name: "CONCACAF Champions Cup", country: "North America", flag: null },
+  { slug: "fifa.world", leagueId: 1, name: "Coupe du Monde 2026", country: "World", flag: null },
+  { slug: "fifa.worldq.uefa", leagueId: 32, name: "Qualif. Europe CDM", country: "Europe", flag: null },
+  // 🇬🇧 Northern Ireland
+  { slug: "nir.1", leagueId: 408, name: "Premiership", country: "N. Ireland", flag: "https://media.api-sports.io/flags/gb-nir.svg" },
+  // 🇮🇹 Italy
+  { slug: "ita.1", leagueId: 135, name: "Serie A", country: "Italy", flag: "https://media.api-sports.io/flags/it.svg" },
+  { slug: "ita.2", leagueId: 136, name: "Serie B", country: "Italy", flag: "https://media.api-sports.io/flags/it.svg" },
+  { slug: "ita.coppa_italia", leagueId: 137, name: "Coppa Italia", country: "Italy", flag: "https://media.api-sports.io/flags/it.svg" },
+  // 🇯🇵 Japan
+  { slug: "jpn.1", leagueId: 98, name: "J-League", country: "Japan", flag: "https://media.api-sports.io/flags/jp.svg" },
+  // 🇱🇻 Latvia
+  { slug: "lat.1", leagueId: 365, name: "Virsliga", country: "Latvia", flag: "https://media.api-sports.io/flags/lv.svg" },
+  // 🇱🇹 Lithuania
+  { slug: "ltu.1", leagueId: 362, name: "A Lyga", country: "Lithuania", flag: "https://media.api-sports.io/flags/lt.svg" },
+  // 🇱🇺 Luxembourg
+  { slug: "lux.1", leagueId: 374, name: "Division Nationale", country: "Luxembourg", flag: "https://media.api-sports.io/flags/lu.svg" },
+  // 🇲🇹 Malta
+  { slug: "mlt.1", leagueId: 393, name: "Premier League", country: "Malta", flag: "https://media.api-sports.io/flags/mt.svg" },
+  // 🇲🇽 Mexico
+  { slug: "mex.1", leagueId: 262, name: "Liga MX", country: "Mexico", flag: "https://media.api-sports.io/flags/mx.svg" },
+  // 🇳🇴 Norway
+  { slug: "nor.1", leagueId: 103, name: "Eliteserien", country: "Norway", flag: "https://media.api-sports.io/flags/no.svg" },
+  // 🇵🇾 Paraguay
+  { slug: "par.1", leagueId: 249, name: "Primera División", country: "Paraguay", flag: "https://media.api-sports.io/flags/py.svg" },
+  // 🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales
+  { slug: "wal.1", leagueId: 110, name: "Premier League", country: "Wales", flag: "https://media.api-sports.io/flags/gb-wls.svg" },
+  // 🇳🇱 Netherlands
+  { slug: "ned.1", leagueId: 88, name: "Eredivisie", country: "Netherlands", flag: "https://media.api-sports.io/flags/nl.svg" },
+  // 🇵🇱 Poland
+  { slug: "pol.1", leagueId: 106, name: "Ekstraklasa", country: "Poland", flag: "https://media.api-sports.io/flags/pl.svg" },
+  // 🇵🇹 Portugal
+  { slug: "por.1", leagueId: 94, name: "Liga Portugal", country: "Portugal", flag: "https://media.api-sports.io/flags/pt.svg" },
+  { slug: "por.2", leagueId: 95, name: "Segunda Liga", country: "Portugal", flag: "https://media.api-sports.io/flags/pt.svg" },
+  // 🇮🇪 Ireland
+  { slug: "irl.1", leagueId: 353, name: "Premier Division", country: "Ireland", flag: "https://media.api-sports.io/flags/ie.svg" },
+  // 🇨🇿 Czech Republic
+  { slug: "cze.1", leagueId: 345, name: "First League", country: "Czech Republic", flag: "https://media.api-sports.io/flags/cz.svg" },
+  // 🇷🇴 Romania
+  { slug: "rou.1", leagueId: 283, name: "Liga I", country: "Romania", flag: "https://media.api-sports.io/flags/ro.svg" },
+  // 🇷🇸 Serbia
+  { slug: "srb.1", leagueId: 286, name: "Super Liga", country: "Serbia", flag: "https://media.api-sports.io/flags/rs.svg" },
+  // 🇸🇰 Slovakia
+  { slug: "svk.1", leagueId: 332, name: "Super Liga", country: "Slovakia", flag: "https://media.api-sports.io/flags/sk.svg" },
+  // 🇸🇮 Slovenia
+  { slug: "svn.1", leagueId: 373, name: "PrvaLiga", country: "Slovenia", flag: "https://media.api-sports.io/flags/si.svg" },
+  // 🇸🇪 Sweden
+  { slug: "swe.1", leagueId: 113, name: "Allsvenskan", country: "Sweden", flag: "https://media.api-sports.io/flags/se.svg" },
+  // 🇨🇭 Switzerland
+  { slug: "sui.1", leagueId: 207, name: "Super League", country: "Switzerland", flag: "https://media.api-sports.io/flags/ch.svg" },
+  // 🇹🇷 Turkey
+  { slug: "tur.1", leagueId: 203, name: "Süper Lig", country: "Turkey", flag: "https://media.api-sports.io/flags/tr.svg" },
+  // 🇺🇦 Ukraine
+  { slug: "ukr.1", leagueId: 333, name: "Premier League", country: "Ukraine", flag: "https://media.api-sports.io/flags/ua.svg" },
 ];
 
 // Map ESPN status to our status format
