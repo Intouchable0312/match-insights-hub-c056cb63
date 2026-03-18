@@ -453,6 +453,279 @@ async function fetchTheSportsDBPlayers(teamId: string, teamName: string): Promis
   return txt;
 }
 
+// ====== FLASHSCORE (via Livesport Services) ======
+
+const FLASHSCORE_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+  'Referer': 'https://www.flashscore.fr/',
+  'Origin': 'https://www.flashscore.fr',
+};
+
+// 15. FlashScore - Search team to get ID
+async function searchFlashScoreTeam(teamName: string): Promise<{ id: string; name: string } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(
+      `https://s.livesport.services/api/v2/search/?q=${encodeURIComponent(teamName)}&lang-id=17&project-id=602&project-type-id=1&sport-id=1`,
+      { headers: FLASHSCORE_HEADERS, signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) { console.error(`  ✗ FS-Search-${teamName.slice(0,10)}: ${res.status}`); return null; }
+    const data = await res.json();
+    console.log(`  ✓ FS-Search-${teamName.slice(0,10)}: OK`);
+
+    // Find best match in results
+    const results = data?.results || data || [];
+    const teamKw = teamName.toLowerCase().split(/\s+/);
+    
+    for (const item of results) {
+      if (item.type === 'participants' && item.participants?.length) {
+        for (const p of item.participants) {
+          const pName = (p.name || '').toLowerCase();
+          if (teamKw.some((w: string) => w.length >= 3 && pName.includes(w))) {
+            return { id: p.id || p.url?.split('/')?.pop() || '', name: p.name };
+          }
+        }
+      }
+      // Alternative structure
+      if (item.id && item.name) {
+        const iName = item.name.toLowerCase();
+        if (teamKw.some((w: string) => w.length >= 3 && iName.includes(w))) {
+          return { id: item.id, name: item.name };
+        }
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error(`  ✗ FS-Search-${teamName.slice(0,10)}: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+// 16. FlashScore - Team last results (form)
+async function fetchFlashScoreTeamForm(teamId: string, teamName: string): Promise<string> {
+  if (!teamId) return "";
+  try {
+    // Try fetching team results page
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(
+      `https://d.flashscore.com/x/feed/tr_2_${teamId}_0_3_`,
+      {
+        headers: {
+          ...FLASHSCORE_HEADERS,
+          'x-fsign': 'SW9D1eZo',
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+    
+    if (!res.ok) {
+      console.error(`  ✗ FS-Form-${teamName.slice(0,10)}: ${res.status}`);
+      return "";
+    }
+    
+    const text = await res.text();
+    console.log(`  ✓ FS-Form-${teamName.slice(0,10)}: ${text.length} chars`);
+    
+    if (!text || text.length < 20) return "";
+    
+    // Parse FlashScore feed format (pipe-delimited)
+    const matches: string[] = [];
+    const lines = text.split('¬');
+    let currentMatch: Record<string, string> = {};
+    
+    for (const line of lines) {
+      const parts = line.split('÷');
+      if (parts.length >= 2) {
+        const key = parts[0].replace(/[~|]/, '');
+        const value = parts[1];
+        
+        if (key.includes('AA') && key.includes('¬')) {
+          if (Object.keys(currentMatch).length > 0) {
+            const matchStr = formatFlashScoreMatch(currentMatch, teamName);
+            if (matchStr) matches.push(matchStr);
+          }
+          currentMatch = {};
+        }
+        currentMatch[key] = value;
+      }
+    }
+    
+    // Handle last match
+    if (Object.keys(currentMatch).length > 0) {
+      const matchStr = formatFlashScoreMatch(currentMatch, teamName);
+      if (matchStr) matches.push(matchStr);
+    }
+    
+    if (matches.length === 0 && text.length > 50) {
+      // Fallback: just return raw text summary
+      return `FlashScore données brutes ${teamName}: ${text.slice(0, 500)}`;
+    }
+    
+    return matches.length > 0
+      ? `FlashScore - Forme ${teamName} (${matches.length} derniers matchs):\n${matches.slice(0, 6).join('\n')}`
+      : "";
+  } catch (err) {
+    console.error(`  ✗ FS-Form-${teamName.slice(0,10)}: ${(err as Error).message}`);
+    return "";
+  }
+}
+
+function formatFlashScoreMatch(m: Record<string, string>, teamName: string): string {
+  // Extract common FlashScore feed keys
+  const home = m['CX'] || m['AE'] || '?';
+  const away = m['CY'] || m['AF'] || '?';
+  const scoreH = m['AG'] || '?';
+  const scoreA = m['AH'] || '?';
+  const league = m['ZA'] || m['CK'] || '';
+  const date = m['AD'] || '';
+  
+  if (home === '?' && away === '?') return '';
+  
+  const isHome = home.toLowerCase().includes(teamName.toLowerCase().split(' ')[0]);
+  const result = scoreH !== '?' && scoreA !== '?'
+    ? (isHome
+      ? (parseInt(scoreH) > parseInt(scoreA) ? 'V' : parseInt(scoreH) < parseInt(scoreA) ? 'D' : 'N')
+      : (parseInt(scoreA) > parseInt(scoreH) ? 'V' : parseInt(scoreA) < parseInt(scoreH) ? 'D' : 'N'))
+    : '?';
+  
+  return `  [${result}] ${home} ${scoreH}-${scoreA} ${away} ${league ? `(${league})` : ''} ${date}`;
+}
+
+// 17. FlashScore - Match page scraping for absences/injuries
+async function fetchFlashScoreMatchPreview(homeTeam: string, awayTeam: string): Promise<string> {
+  try {
+    // Search for the specific match
+    const query = `${homeTeam} ${awayTeam}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(
+      `https://s.livesport.services/api/v2/search/?q=${encodeURIComponent(query)}&lang-id=17&project-id=602&project-type-id=1&sport-id=1`,
+      { headers: FLASHSCORE_HEADERS, signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    
+    if (!res.ok) { console.error(`  ✗ FS-Preview: ${res.status}`); return ""; }
+    const data = await res.json();
+    console.log(`  ✓ FS-Preview: OK`);
+    
+    // Try to find a match event in results
+    const results = data?.results || data || [];
+    let matchId = '';
+    
+    for (const item of results) {
+      if (item.type === 'events' && item.events?.length) {
+        for (const evt of item.events) {
+          const evtStr = JSON.stringify(evt).toLowerCase();
+          const homeKw = homeTeam.toLowerCase().split(' ')[0];
+          const awayKw = awayTeam.toLowerCase().split(' ')[0];
+          if (evtStr.includes(homeKw) && evtStr.includes(awayKw)) {
+            matchId = evt.id || evt.url?.split('/')?.pop() || '';
+            break;
+          }
+        }
+      }
+    }
+    
+    if (!matchId) return "";
+    
+    // Fetch match summary
+    const controller2 = new AbortController();
+    const timeout2 = setTimeout(() => controller2.abort(), 8000);
+    const matchRes = await fetch(
+      `https://d.flashscore.com/x/feed/d_su_${matchId}_fr_1`,
+      {
+        headers: { ...FLASHSCORE_HEADERS, 'x-fsign': 'SW9D1eZo' },
+        signal: controller2.signal,
+      }
+    );
+    clearTimeout(timeout2);
+    
+    if (!matchRes.ok) { console.error(`  ✗ FS-Match: ${matchRes.status}`); return ""; }
+    const matchText = await matchRes.text();
+    console.log(`  ✓ FS-Match: ${matchText.length} chars`);
+    
+    if (matchText.length > 50) {
+      return `FlashScore - Aperçu match:\n${matchText.slice(0, 1000)}`;
+    }
+    return "";
+  } catch (err) {
+    console.error(`  ✗ FS-Preview: ${(err as Error).message}`);
+    return "";
+  }
+}
+
+// 18. FlashScore - Scrape team page HTML for absences
+async function fetchFlashScoreAbsences(teamName: string): Promise<string> {
+  try {
+    // Try to fetch the team page from FlashScore FR
+    const slug = teamName.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(
+      `https://www.flashscore.fr/equipe/${slug}/`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+          'Accept': 'text/html',
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+    
+    if (!res.ok) { console.error(`  ✗ FS-Abs-${teamName.slice(0,10)}: ${res.status}`); return ""; }
+    const html = await res.text();
+    console.log(`  ✓ FS-Abs-${teamName.slice(0,10)}: ${html.length} chars`);
+    
+    // Extract structured data from HTML (JSON-LD, meta tags)
+    let info = "";
+    
+    // Look for JSON-LD data
+    const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    if (jsonLdMatch) {
+      try {
+        const jsonLd = JSON.parse(jsonLdMatch[1]);
+        if (jsonLd.name) info += `Équipe: ${jsonLd.name}\n`;
+        if (jsonLd.description) info += `Info: ${jsonLd.description.slice(0, 300)}\n`;
+      } catch { /* ignore */ }
+    }
+    
+    // Look for meta description
+    const metaDesc = html.match(/<meta name="description" content="([^"]+)"/);
+    if (metaDesc) {
+      info += `FlashScore: ${metaDesc[1]}\n`;
+    }
+    
+    // Extract any injury/absence related content
+    const absencePatterns = [
+      /bless[ée]/gi, /absent/gi, /suspendu/gi, /indisponible/gi,
+      /injured/gi, /suspended/gi, /doubtful/gi, /unavailable/gi,
+    ];
+    
+    // Search in text content
+    const textContent = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    for (const pattern of absencePatterns) {
+      const matches = textContent.match(new RegExp(`.{0,80}${pattern.source}.{0,80}`, 'gi'));
+      if (matches) {
+        info += matches.slice(0, 3).map(m => `  - ${m.trim()}`).join('\n') + '\n';
+      }
+    }
+    
+    return info ? `FlashScore absences ${teamName}:\n${info}` : "";
+  } catch (err) {
+    console.error(`  ✗ FS-Abs-${teamName.slice(0,10)}: ${(err as Error).message}`);
+    return "";
+  }
+}
+
 // 13. Web search for injuries/news (using free search APIs)
 async function fetchInjuriesAndNews(homeTeam: string, awayTeam: string, leagueName: string): Promise<string> {
   let results = "";
@@ -603,6 +876,9 @@ serve(async (req) => {
       fdukStats,
       espnMatchDetails,
       injuriesNews,
+      homeTeamFS, awayTeamFS,
+      fsMatchPreview,
+      fsAbsencesHome, fsAbsencesAway,
     ] = await Promise.all([
       fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
@@ -618,17 +894,24 @@ serve(async (req) => {
       fetchFootballDataUK(match.league_id, currentSeason, match.home_team_name, match.away_team_name),
       fetchESPNMatchDetails(match.home_team_name, match.away_team_name, match.league_id, match.kickoff),
       fetchInjuriesAndNews(match.home_team_name, match.away_team_name, match.league_name),
+      searchFlashScoreTeam(match.home_team_name),
+      searchFlashScoreTeam(match.away_team_name),
+      fetchFlashScoreMatchPreview(match.home_team_name, match.away_team_name),
+      fetchFlashScoreAbsences(match.home_team_name),
+      fetchFlashScoreAbsences(match.away_team_name),
     ]);
 
-    // Wave 2: depends on team IDs
+    // Wave 2: depends on team IDs (TheSportsDB + FlashScore)
     console.log(`\n🆓 Fetching free data sources (wave 2)...`);
-    const [homeEventsTxt, awayEventsTxt, homeLineup, awayLineup, homePlayers, awayPlayers] = await Promise.all([
+    const [homeEventsTxt, awayEventsTxt, homeLineup, awayLineup, homePlayers, awayPlayers, fsHomeForm, fsAwayForm] = await Promise.all([
       fetchTheSportsDBEvents(homeTeamTSDB.id, match.home_team_name),
       fetchTheSportsDBEvents(awayTeamTSDB.id, match.away_team_name),
       fetchTheSportsDBLineup(homeTeamTSDB.id, match.home_team_name),
       fetchTheSportsDBLineup(awayTeamTSDB.id, match.away_team_name),
       fetchTheSportsDBPlayers(homeTeamTSDB.id, match.home_team_name),
       fetchTheSportsDBPlayers(awayTeamTSDB.id, match.away_team_name),
+      fetchFlashScoreTeamForm(homeTeamFS?.id || '', match.home_team_name),
+      fetchFlashScoreTeamForm(awayTeamFS?.id || '', match.away_team_name),
     ]);
 
     // ══════════ FORMAT DATA ══════════
@@ -644,6 +927,19 @@ serve(async (req) => {
     if (homeEventsTxt) recentFormTxt += `\n\n${homeEventsTxt}`;
     if (awayEventsTxt) recentFormTxt += `\n\n${awayEventsTxt}`;
     if (!recentFormTxt) recentFormTxt = "Forme récente non disponible";
+
+    // FlashScore form data
+    let flashScoreFormTxt = "";
+    if (fsHomeForm) flashScoreFormTxt += fsHomeForm;
+    if (fsAwayForm) flashScoreFormTxt += (flashScoreFormTxt ? "\n\n" : "") + fsAwayForm;
+
+    // FlashScore absences
+    let flashScoreAbsTxt = "";
+    if (fsAbsencesHome) flashScoreAbsTxt += fsAbsencesHome;
+    if (fsAbsencesAway) flashScoreAbsTxt += (flashScoreAbsTxt ? "\n\n" : "") + fsAbsencesAway;
+
+    // FlashScore match preview
+    const flashScorePreviewTxt = fsMatchPreview || "";
 
     const h2hTxt = tsdbH2H || "H2H non disponible";
     const teamInfoTxt = [homeTeamTSDB.info, awayTeamTSDB.info, espnHomeStats, espnAwayStats].filter(Boolean).join("\n\n") || "Non disponible";
@@ -673,6 +969,9 @@ serve(async (req) => {
     check(!!playersTxt);
     check(!!espnMatchDetails);
     check(!!injuriesNews);
+    check(!!flashScoreFormTxt);
+    check(!!flashScoreAbsTxt);
+    check(!!flashScorePreviewTxt);
 
     console.log(`\n📊 ${srcCount} data sources collected`);
 
@@ -685,7 +984,7 @@ serve(async (req) => {
 RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 20%, Stats détaillées (tirs, corners, cotes) 20%, Classement 15%, H2H 15%, Effectif/Compo 15%, Météo/Dom 10%, Calendrier 5%
+3. Pondération: Forme récente (FlashScore + autres) 25%, Stats détaillées (tirs, corners, cotes) 20%, Classement 15%, H2H 15%, Effectif/Compo/Absences 15%, Météo/Dom 5%, Calendrier 5%
 4. Séries victoires/défaites = facteur MAJEUR
 5. IMPORTANT: Dans TOUS les textes, utilise toujours "${HOME}" au lieu de "domicile"/"l'équipe à domicile" et "${AWAY}" au lieu de "extérieur"/"l'équipe visiteur". Nomme TOUJOURS les équipes par leur NOM.
 6. Prends en compte la météo si disponible
@@ -697,7 +996,8 @@ RÈGLES STRICTES:
 12. IMPORTANT "suggested_bets": Tu DOIS TOUJOURS fournir au minimum 3 paris suggérés et au maximum 6. Ce sont les paris les plus sécurisés basés sur l'analyse. Pour chaque pari, donne le type (1X2, BTTS, O/U 2.5, Score exact, Mi-temps, etc.), la sélection exacte, la probabilité, le niveau de confiance et un raisonnement détaillé utilisant les NOMS des équipes.
 13. Pour les sections team_a_analysis et team_b_analysis, utilise les NOMS des équipes "${HOME}" et "${AWAY}".
 14. Analyse les COMPOSITIONS et EFFECTIFS disponibles pour identifier les forces/faiblesses.
-15. Prends en compte les ABSENCES et BLESSURES si l'information est disponible.`;
+15. Prends en compte les ABSENCES et BLESSURES si l'information est disponible.
+16. IMPORTANT: Utilise les données FlashScore (forme 6 derniers matchs, absences) comme source PRIORITAIRE pour évaluer la dynamique actuelle.`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${HOME} vs ${AWAY}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
@@ -708,6 +1008,15 @@ ${standingsTxt}
 
 ══ FORME RÉCENTE & SÉRIES ══
 ${recentFormTxt}
+
+══ FLASHSCORE - FORME DÉTAILLÉE (6 DERNIERS MATCHS) ══
+${flashScoreFormTxt || "Non disponible"}
+
+══ FLASHSCORE - ABSENCES & BLESSURES ══
+${flashScoreAbsTxt || "Non disponible"}
+
+══ FLASHSCORE - APERÇU DU MATCH ══
+${flashScorePreviewTxt || "Non disponible"}
 
 ══ CONFRONTATIONS DIRECTES ══
 ${h2hTxt}
@@ -740,7 +1049,8 @@ ${teamInfoTxt}
 - Probabilités en 0-100. home+draw+away=100
 - Utilise TOUJOURS "${HOME}" et "${AWAY}" dans tes textes, JAMAIS "domicile"/"extérieur"
 - Tu DOIS fournir entre 3 et 6 suggested_bets avec des raisonnements détaillés
-- Analyse TOUTES les données disponibles (stats, compos, effectifs, météo, calendrier)
+- Analyse TOUTES les données disponibles (stats, compos, effectifs, météo, calendrier, FlashScore)
+- Les données FlashScore (forme, absences) sont PRIORITAIRES pour évaluer la dynamique actuelle
 - data_quality_assessment: NE MENTIONNE AUCUN NOM DE SOURCE`;
 
     console.log("🤖 Calling AI...");
