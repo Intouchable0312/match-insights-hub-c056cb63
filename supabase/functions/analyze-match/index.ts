@@ -901,15 +901,17 @@ serve(async (req) => {
       fetchFlashScoreAbsences(match.away_team_name),
     ]);
 
-    // Wave 2: depends on team IDs
+    // Wave 2: depends on team IDs (TheSportsDB + FlashScore)
     console.log(`\n🆓 Fetching free data sources (wave 2)...`);
-    const [homeEventsTxt, awayEventsTxt, homeLineup, awayLineup, homePlayers, awayPlayers] = await Promise.all([
+    const [homeEventsTxt, awayEventsTxt, homeLineup, awayLineup, homePlayers, awayPlayers, fsHomeForm, fsAwayForm] = await Promise.all([
       fetchTheSportsDBEvents(homeTeamTSDB.id, match.home_team_name),
       fetchTheSportsDBEvents(awayTeamTSDB.id, match.away_team_name),
       fetchTheSportsDBLineup(homeTeamTSDB.id, match.home_team_name),
       fetchTheSportsDBLineup(awayTeamTSDB.id, match.away_team_name),
       fetchTheSportsDBPlayers(homeTeamTSDB.id, match.home_team_name),
       fetchTheSportsDBPlayers(awayTeamTSDB.id, match.away_team_name),
+      fetchFlashScoreTeamForm(homeTeamFS?.id || '', match.home_team_name),
+      fetchFlashScoreTeamForm(awayTeamFS?.id || '', match.away_team_name),
     ]);
 
     // ══════════ FORMAT DATA ══════════
