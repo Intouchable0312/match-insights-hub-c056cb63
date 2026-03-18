@@ -984,7 +984,7 @@ serve(async (req) => {
 RÈGLES STRICTES:
 1. N'invente JAMAIS de données
 2. Probabilités en 0-100 (65 = 65%, PAS 0.65). home_win + draw + away_win = 100
-3. Pondération: Forme 20%, Stats détaillées (tirs, corners, cotes) 20%, Classement 15%, H2H 15%, Effectif/Compo 15%, Météo/Dom 10%, Calendrier 5%
+3. Pondération: Forme récente (FlashScore + autres) 25%, Stats détaillées (tirs, corners, cotes) 20%, Classement 15%, H2H 15%, Effectif/Compo/Absences 15%, Météo/Dom 5%, Calendrier 5%
 4. Séries victoires/défaites = facteur MAJEUR
 5. IMPORTANT: Dans TOUS les textes, utilise toujours "${HOME}" au lieu de "domicile"/"l'équipe à domicile" et "${AWAY}" au lieu de "extérieur"/"l'équipe visiteur". Nomme TOUJOURS les équipes par leur NOM.
 6. Prends en compte la météo si disponible
@@ -996,7 +996,8 @@ RÈGLES STRICTES:
 12. IMPORTANT "suggested_bets": Tu DOIS TOUJOURS fournir au minimum 3 paris suggérés et au maximum 6. Ce sont les paris les plus sécurisés basés sur l'analyse. Pour chaque pari, donne le type (1X2, BTTS, O/U 2.5, Score exact, Mi-temps, etc.), la sélection exacte, la probabilité, le niveau de confiance et un raisonnement détaillé utilisant les NOMS des équipes.
 13. Pour les sections team_a_analysis et team_b_analysis, utilise les NOMS des équipes "${HOME}" et "${AWAY}".
 14. Analyse les COMPOSITIONS et EFFECTIFS disponibles pour identifier les forces/faiblesses.
-15. Prends en compte les ABSENCES et BLESSURES si l'information est disponible.`;
+15. Prends en compte les ABSENCES et BLESSURES si l'information est disponible.
+16. IMPORTANT: Utilise les données FlashScore (forme 6 derniers matchs, absences) comme source PRIORITAIRE pour évaluer la dynamique actuelle.`;
 
     const userPrompt = `ANALYSE ULTRA-COMPLÈTE — ${HOME} vs ${AWAY}
 ${match.league_name} (${match.league_country}) — ${match.league_round || '?'}
