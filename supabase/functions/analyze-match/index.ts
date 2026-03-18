@@ -876,6 +876,9 @@ serve(async (req) => {
       fdukStats,
       espnMatchDetails,
       injuriesNews,
+      homeTeamFS, awayTeamFS,
+      fsMatchPreview,
+      fsAbsencesHome, fsAbsencesAway,
     ] = await Promise.all([
       fetchESPNStandings(match.league_id, currentSeason),
       fetchTheSportsDBTeam(match.home_team_name),
@@ -891,6 +894,11 @@ serve(async (req) => {
       fetchFootballDataUK(match.league_id, currentSeason, match.home_team_name, match.away_team_name),
       fetchESPNMatchDetails(match.home_team_name, match.away_team_name, match.league_id, match.kickoff),
       fetchInjuriesAndNews(match.home_team_name, match.away_team_name, match.league_name),
+      searchFlashScoreTeam(match.home_team_name),
+      searchFlashScoreTeam(match.away_team_name),
+      fetchFlashScoreMatchPreview(match.home_team_name, match.away_team_name),
+      fetchFlashScoreAbsences(match.home_team_name),
+      fetchFlashScoreAbsences(match.away_team_name),
     ]);
 
     // Wave 2: depends on team IDs
