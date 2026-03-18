@@ -928,6 +928,19 @@ serve(async (req) => {
     if (awayEventsTxt) recentFormTxt += `\n\n${awayEventsTxt}`;
     if (!recentFormTxt) recentFormTxt = "Forme récente non disponible";
 
+    // FlashScore form data
+    let flashScoreFormTxt = "";
+    if (fsHomeForm) flashScoreFormTxt += fsHomeForm;
+    if (fsAwayForm) flashScoreFormTxt += (flashScoreFormTxt ? "\n\n" : "") + fsAwayForm;
+
+    // FlashScore absences
+    let flashScoreAbsTxt = "";
+    if (fsAbsencesHome) flashScoreAbsTxt += fsAbsencesHome;
+    if (fsAbsencesAway) flashScoreAbsTxt += (flashScoreAbsTxt ? "\n\n" : "") + fsAbsencesAway;
+
+    // FlashScore match preview
+    const flashScorePreviewTxt = fsMatchPreview || "";
+
     const h2hTxt = tsdbH2H || "H2H non disponible";
     const teamInfoTxt = [homeTeamTSDB.info, awayTeamTSDB.info, espnHomeStats, espnAwayStats].filter(Boolean).join("\n\n") || "Non disponible";
 
